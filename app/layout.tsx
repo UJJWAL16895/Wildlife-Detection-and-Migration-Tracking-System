@@ -25,6 +25,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="stylesheet" href="/css/variables.css" />
+        <link rel="stylesheet" href="/css/reset.css" />
+        <link rel="stylesheet" href="/css/base.css" />
+        <link rel="stylesheet" href="/css/parallax.css" />
+        <link rel="stylesheet" href="/css/act1.css" />
+        <link rel="stylesheet" href="/css/act2.css" />
+        <link rel="stylesheet" href="/css/act3.css" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
