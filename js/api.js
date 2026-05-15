@@ -95,16 +95,21 @@ async function runDetectionAndRedirect(imageFile) {
         });
 
         if (!response.ok) {
-            // Fallback endpoint
-            const fallbackResponse = await fetch(`${API_BASE}/predict`, {
-                method: 'POST',
-                body: formData,
-            });
-            if (!fallbackResponse.ok) throw new Error(`API error: ${fallbackResponse.status}`);
-            const fallbackData = await fallbackResponse.json();
-            sessionStorage.setItem('wildtrack_result', JSON.stringify(fallbackData));
+            // Try to read any error JSON the API sent back
+            let errBody = null;
+            try { errBody = await response.json(); } catch (_) {}
+            console.warn('[WildTrack] /analyze-image returned', response.status, errBody);
+
+            // Store a structured error result so the result page can show something useful
+            sessionStorage.setItem('wildtrack_result', JSON.stringify({
+                error: true,
+                status: response.status,
+                detail: errBody,
+                detections: []
+            }));
         } else {
             const data = await response.json();
+            console.log('[WildTrack] API response:', data);
             sessionStorage.setItem('wildtrack_result', JSON.stringify(data));
         }
 
@@ -118,6 +123,16 @@ async function runDetectionAndRedirect(imageFile) {
     } catch (error) {
         console.error('[WildTrack] Detection failed:', error);
 
+        // Store the error so the result page can show a diagnostic instead of empty state
+        try {
+            sessionStorage.setItem('wildtrack_result', JSON.stringify({
+                error: true,
+                message: error.message || 'Unknown error',
+                detections: []
+            }));
+            // Still store the image if we have it (base64 may have resolved before the error)
+        } catch (_) {}
+
         if (identifyBtn) {
             identifyBtn.disabled  = false;
             identifyBtn.innerHTML = originalHTML;
@@ -125,7 +140,10 @@ async function runDetectionAndRedirect(imageFile) {
             identifyBtn.style.animation = '';
         }
 
-        showWildtrackToast('Detection failed. Please try again.', 'error');
+        showWildtrackToast('Detection failed — redirecting with error details.', 'error');
+
+        // Always redirect so user sees result page context, not a blank alert
+        setTimeout(function() { window.location.href = '/result'; }, 1500);
     }
 }
 

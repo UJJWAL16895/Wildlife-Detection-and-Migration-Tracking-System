@@ -35,29 +35,48 @@ function getSpeciesImg(name) {
 }
 
 // ─── LOAD DATA ────────────────────────────────────────────────────────────────
-const raw = sessionStorage.getItem('wildtrack_result');
-const img64 = sessionStorage.getItem('wildtrack_image');
+const raw    = sessionStorage.getItem('wildtrack_result');
+const img64  = sessionStorage.getItem('wildtrack_image');
 
 if (!raw) {
+  // No data at all — user landed here directly
   document.getElementById('empty-state').classList.add('show');
   document.body.classList.add('ready');
 } else {
   const data = JSON.parse(raw);
-  document.getElementById('result-main').style.display = 'block';
 
-  // Determine detections array
-  const detections = data.detections || (data.species ? [data] : []);
-  let activeIdx = 0;
+  // ── Error payload from api.js ──────────────────────────────────────────────
+  if (data.error) {
+    const emptyEl = document.getElementById('empty-state');
+    const detail  = data.detail?.detail?.error || data.message || `HTTP ${data.status}`;
+    emptyEl.innerHTML = `
+      <div style="border:1px solid rgba(239,68,68,0.4);background:rgba(30,4,4,0.7);border-radius:16px;padding:32px 40px;max-width:480px;margin:0 auto">
+        <div style="font-size:2rem;margin-bottom:12px">⚠</div>
+        <h2 style="color:#F0EDE8;font-family:'Playfair Display',serif;font-size:1.8rem;margin:0 0 12px">Detection Failed</h2>
+        <p style="color:rgba(255,255,255,0.6);margin:0 0 8px;font-size:0.95rem">The API could not process this image:</p>
+        <code style="display:block;background:rgba(0,0,0,0.4);border-radius:8px;padding:10px 14px;color:#f87171;font-size:0.85rem;margin-bottom:24px">${detail}</code>
+        <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;margin-bottom:24px">Try a clearer photo of a supported species: Asian Elephant, Bengal Tiger, Common Myna, House Crow, Indian Grey Hornbill, Plains Zebra, Wild Donkey, or Wild Horse.</p>
+        <a class="btn-primary" href="/" style="text-decoration:none;display:inline-block">Try Another Image</a>
+      </div>`;
+    emptyEl.classList.add('show');
+    document.body.classList.add('ready');
 
-  // Build tabs if multiple
-  buildTabs(detections);
+  // ── Successful payload with detections ────────────────────────────────────
+  } else {
+    document.getElementById('result-main').style.display = 'block';
 
-  // Load encyclopedia data for species info
-  fetch('../data/species_encyclopedia.json')
-    .then(r => r.json())
-    .then(enc => { renderDetection(detections[0], enc, img64); document.body.classList.add('ready'); })
-    .catch(() => { renderDetection(detections[0], null, img64); document.body.classList.add('ready'); });
+    const detections = data.detections || (data.species ? [data] : []);
+    let activeIdx = 0;
+
+    buildTabs(detections);
+
+    fetch('../data/species_encyclopedia.json')
+      .then(r => r.json())
+      .then(enc => { renderDetection(detections[0], enc, img64); document.body.classList.add('ready'); })
+      .catch(() => { renderDetection(detections[0], null, img64); document.body.classList.add('ready'); });
+  }
 }
+
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function buildTabs(detections) {
