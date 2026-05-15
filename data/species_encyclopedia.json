@@ -1,0 +1,243 @@
+{
+    "species": [
+        {
+            "common_name": "Asian Elephant",
+            "scientific_name": "Elephas maximus",
+            "image_folder": "Asian Elephant",
+            "habitat": {
+                "primary": "Tropical and subtropical forests, grasslands",
+                "regions": [
+                    "South Asia",
+                    "Southeast Asia"
+                ],
+                "countries": [
+                    "India",
+                    "Sri Lanka",
+                    "Thailand",
+                    "Malaysia",
+                    "Indonesia"
+                ]
+            },
+            "diet": "Herbivore",
+            "conservation_status": "Endangered",
+            "physical_description": "Large Asian elephant with smaller ears than African elephants and a rounded back.",
+            "fun_facts": [
+                "Asian elephants can swim and use their trunk as a snorkel.",
+                "Elephants communicate using low-frequency sounds.",
+                "Matriarchs pass migration memory across generations."
+            ],
+            "id": 1
+        },
+        {
+            "common_name": "Common Myna",
+            "scientific_name": "Acridotheres tristis",
+            "image_folder": "Common-Myna",
+            "habitat": {
+                "primary": "Urban areas, farmland, open woodland",
+                "regions": [
+                    "South Asia",
+                    "Introduced worldwide"
+                ],
+                "countries": [
+                    "India",
+                    "Pakistan",
+                    "Nepal",
+                    "Sri Lanka",
+                    "Bangladesh"
+                ]
+            },
+            "diet": "Omnivore",
+            "conservation_status": "Least Concern",
+            "physical_description": "Medium-sized brown bird with black head, yellow bill, and yellow eye patch.",
+            "fun_facts": [
+                "Common mynas are excellent vocal mimics.",
+                "They are highly adaptable to human-dominated landscapes.",
+                "In some regions they are managed as an invasive species."
+            ],
+            "id": 2
+        },
+        {
+            "common_name": "Donkey",
+            "scientific_name": "Equus africanus asinus",
+            "image_folder": "donkey",
+            "habitat": {
+                "primary": "Domestic and semi-arid environments",
+                "regions": [
+                    "Worldwide"
+                ],
+                "countries": [
+                    "India",
+                    "China",
+                    "Pakistan",
+                    "Ethiopia",
+                    "Mexico"
+                ]
+            },
+            "diet": "Herbivore",
+            "conservation_status": "Domesticated",
+            "physical_description": "Domestic equid with long ears, compact build, and high endurance.",
+            "fun_facts": [
+                "Donkeys have strong memory and spatial awareness.",
+                "They are more drought-tolerant than horses.",
+                "Their bray can carry over long distances."
+            ],
+            "id": 3
+        },
+        {
+            "common_name": "Horse",
+            "scientific_name": "Equus ferus caballus",
+            "image_folder": "horse",
+            "habitat": {
+                "primary": "Grasslands and managed domestic environments",
+                "regions": [
+                    "Worldwide"
+                ],
+                "countries": [
+                    "India",
+                    "USA",
+                    "China",
+                    "Mexico",
+                    "Brazil"
+                ]
+            },
+            "diet": "Herbivore",
+            "conservation_status": "Domesticated",
+            "physical_description": "Large, fast-running ungulate with long legs and a flowing mane.",
+            "fun_facts": [
+                "Horses can sleep standing up.",
+                "They have wide-angle vision due to side-placed eyes.",
+                "Foals can stand and move soon after birth."
+            ],
+            "id": 4
+        },
+        {
+            "common_name": "House Crow",
+            "scientific_name": "Corvus splendens",
+            "image_folder": "House-Crow",
+            "habitat": {
+                "primary": "Urban and coastal settlements near humans",
+                "regions": [
+                    "South Asia",
+                    "Introduced in Africa and Middle East"
+                ],
+                "countries": [
+                    "India",
+                    "Sri Lanka",
+                    "Pakistan",
+                    "Kenya",
+                    "Tanzania"
+                ]
+            },
+            "diet": "Omnivore",
+            "conservation_status": "Least Concern",
+            "physical_description": "Grey-necked crow with glossy black wings and strong urban adaptability.",
+            "fun_facts": [
+                "House crows are known for high intelligence and problem solving.",
+                "They often form large communal roosts.",
+                "They have expanded globally via human transport routes."
+            ],
+            "id": 5
+        },
+        {
+            "common_name": "Indian Grey Hornbill",
+            "scientific_name": "Ocyceros birostris",
+            "image_folder": "Indian-Grey-Hornbill",
+            "habitat": {
+                "primary": "Deciduous forests and urban tree cover",
+                "regions": [
+                    "South Asia"
+                ],
+                "countries": [
+                    "India",
+                    "Nepal",
+                    "Pakistan",
+                    "Bangladesh"
+                ]
+            },
+            "diet": "Omnivore",
+            "conservation_status": "Least Concern",
+            "physical_description": "Grey-brown hornbill with a long curved bill and prominent casque.",
+            "fun_facts": [
+                "Hornbills are important seed dispersers.",
+                "Pairs often show long-term bonds.",
+                "Females nest inside tree cavities sealed with mud."
+            ],
+            "id": 6
+        },
+        {
+            "common_name": "Bengal Tiger",
+            "scientific_name": "Panthera tigris tigris",
+            "image_folder": "tigers",
+            "habitat": {
+                "primary": "Terai Arc Landscape — Western Nepal & Northern India",
+                "regions": [
+                    "Sundarbans Mangrove Delta (India/Bangladesh)",
+                    "Central Indian Tiger Corridor (Kanha–Pench–Tadoba)",
+                    "Eastern Ghats Corridor",
+                    "Kaziranga–Karbi Anglong Corridor (Assam)"
+                ],
+                "countries": [
+                    "India",
+                    "Nepal",
+                    "Bangladesh",
+                    "Bhutan"
+                ]
+            },
+            "diet": "Carnivore — apex predator. Primary prey: Chital deer, Sambar deer, Gaur, Wild boar, Nilgai. Opportunistic: Langur monkeys, porcupines, fish, birds.",
+            "conservation_status": "Endangered",
+            "physical_description": "Large striped big cat with strong territorial behavior and high ecological importance.",
+            "fun_facts": [
+                "A tiger's roar can be heard 3 kilometers away. The infrasonic (below human hearing) component of a roar may cause temporary paralysis in prey animals — stunning them before the attack.",
+                "Tigers are the only big cats with fully striped fur — no two tigers have identical stripe patterns, just like human fingerprints.",
+                "A Bengal tiger can eat 40kg of meat in a single sitting — equivalent to eating 160 hamburgers at once.",
+                "The Sundarbans tigers are the world's only sea-swimming tigers. They regularly cross 3km+ of open water between mangrove islands.",
+                "A tigress teaches her cubs to hunt over a period of 18 months — one of the longest parental education periods of any land mammal.",
+                "Tigers have antiseptic saliva — they lick their wounds and are documented recovering from serious injuries that would kill most animals.",
+                "A tiger can leap 10 meters horizontally and 5 meters vertically — the equivalent of jumping onto a second-story balcony.",
+                "The white spots on the back of a tiger's ears (ocelli) are thought to function as false eyes when the tiger is facing away — deterring attack from behind.",
+                "India's tiger population has grown from approximately 1,411 (2006) to 3,167 (2022) — more than doubling in 16 years, one of conservation's greatest success stories.",
+                "Tigers are the national animal of India, Bangladesh, Malaysia, and South Korea."
+            ],
+            "metadata": {
+                "image_url": "/assets/images/species/bengal_tiger_hero.jpg",
+                "thumbnail_url": "/assets/images/species/bengal_tiger_thumb.jpg",
+                "population_estimate": {
+                    "india_total": 3167,
+                    "nepal_total": 355,
+                    "bangladesh_total": 114,
+                    "bhutan_total": 131,
+                    "data_year": 2022,
+                    "source_note": "India figures from NTCA All India Tiger Estimation 2022. Nepal from Department of National Parks and Wildlife Conservation 2022 survey."
+                }
+            },
+            "id": 7
+        },
+        {
+            "common_name": "Plains Zebra",
+            "scientific_name": "Equus quagga",
+            "image_folder": "zebra",
+            "habitat": {
+                "primary": "Savannas and open grasslands",
+                "regions": [
+                    "Eastern and Southern Africa"
+                ],
+                "countries": [
+                    "Kenya",
+                    "Tanzania",
+                    "Botswana",
+                    "Zimbabwe",
+                    "South Africa"
+                ]
+            },
+            "diet": "Herbivore",
+            "conservation_status": "Near Threatened",
+            "physical_description": "Striped equid with herd behavior and high mobility across grassland ecosystems.",
+            "fun_facts": [
+                "Each zebra has a unique stripe pattern.",
+                "Zebra herds can travel long distances with seasonal rain cycles.",
+                "They often coordinate vigilance within groups."
+            ],
+            "id": 8
+        }
+    ]
+}

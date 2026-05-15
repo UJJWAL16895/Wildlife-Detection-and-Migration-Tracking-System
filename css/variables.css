@@ -1,0 +1,32 @@
+:root {
+    /* Colors */
+    --c-void: #050808;
+    --c-forest: #0a0f0a;
+    --c-amber: #d4a843;
+    --c-amber-glow: rgba(212, 168, 67, 0.4);
+    --c-teal: #00e5cc;
+    --c-dusk: #6b3fa0;
+    --c-bio: #39ff14;
+    --c-text: #e8e0d0;
+    --c-text-muted: rgba(232, 224, 208, 0.55);
+    --c-danger: #ff4444;
+    --c-success: #39ff14;
+
+    /* Typography */
+    --font-display: 'Cormorant Garamond', 'Playfair Display', serif;
+    --font-body: 'Syne', 'DM Sans', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+
+    /* Spacing */
+    --section-pad: clamp(4rem, 10vw, 8rem);
+
+    /* Glass */
+    --glass-bg: rgba(10, 15, 10, 0.45);
+    --glass-border: rgba(212, 168, 67, 0.25);
+    --glass-blur: blur(16px);
+    --glass-shadow: 0 32px 64px rgba(0, 0, 0, 0.7);
+
+    /* Transitions */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
