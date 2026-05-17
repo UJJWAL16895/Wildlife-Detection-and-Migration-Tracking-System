@@ -1,356 +1,387 @@
-// crow-cursor.js — Itachi Crow Genjutsu | Fixed: solid black body, red eye glow in canvas
-(function CrowGenjutsu() {
+// bat-cursor.js — Itachi-style Bat Cursor | Pure canvas, glowing red eyes
+(function () {
   'use strict';
-
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  if (('ontouchstart' in window || navigator.maxTouchPoints > 0)) return;
+  if ('ontouchstart' in window || navigator.maxTouchPoints > 0) return;
 
   // ── CANVAS ──────────────────────────────────────────────────────────
   const canvas = document.createElement('canvas');
   Object.assign(canvas.style, {
-    position:'fixed', top:'0', left:'0', width:'100vw', height:'100vh',
-    zIndex:'99999', pointerEvents:'none',
+    position: 'fixed', top: '0', left: '0',
+    width: '100vw', height: '100vh',
+    zIndex: '99999', pointerEvents: 'none',
   });
   document.body.appendChild(canvas);
   const ctx = canvas.getContext('2d');
   const DPR = Math.min(devicePixelRatio || 1, 2);
-
   function resize() {
     canvas.width  = window.innerWidth  * DPR;
     canvas.height = window.innerHeight * DPR;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
   resize();
-  window.addEventListener('resize', resize, { passive:true });
+  window.addEventListener('resize', resize, { passive: true });
 
-  // ── SVG CROW — Pure black body only, NO filter baked in ─────────────
-  // Eye is drawn separately in canvas so glow stays red on the dot only
-  const CROW_SVG = [
-    // Pose 0: wings angled downward (glide)
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 44">
-      <ellipse cx="35" cy="26" rx="11" ry="6" fill="#000"/>
-      <ellipse cx="25" cy="21" rx="6.5" ry="5.5" fill="#000"/>
-      <polygon points="19,21 13,19.5 19,23" fill="#000"/>
-      <path d="M30,25 C22,31 10,37 0,40 C7,33 16,27 30,23Z" fill="#000"/>
-      <path d="M40,25 C48,31 60,37 70,40 C63,33 54,27 40,23Z" fill="#000"/>
-      <polygon points="46,26 56,23 56,29" fill="#000"/>
-    </svg>`,
-    // Pose 1: wings raised upward (upstroke)
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 44">
-      <ellipse cx="35" cy="28" rx="11" ry="6" fill="#000"/>
-      <ellipse cx="25" cy="23" rx="6.5" ry="5.5" fill="#000"/>
-      <polygon points="19,23 13,21.5 19,25" fill="#000"/>
-      <path d="M30,25 C24,17 12,8 0,4 C7,12 17,20 30,27Z" fill="#000"/>
-      <path d="M40,25 C46,17 58,8 70,4 C63,12 53,20 40,27Z" fill="#000"/>
-      <polygon points="46,28 56,25 56,31" fill="#000"/>
-    </svg>`,
-    // Pose 2: wings fully extended (mid-flap)
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 44">
-      <ellipse cx="35" cy="27" rx="11" ry="6" fill="#000"/>
-      <ellipse cx="25" cy="22" rx="6.5" ry="5.5" fill="#000"/>
-      <polygon points="19,22 13,20.5 19,24" fill="#000"/>
-      <path d="M30,25 C20,23 9,21 0,20 C8,23 19,26 30,27Z" fill="#000"/>
-      <path d="M40,25 C50,23 61,21 70,20 C62,23 51,26 40,27Z" fill="#000"/>
-      <path d="M8,21 C5,20 2,21 0,20" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M62,21 C65,20 68,21 70,20" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M46,27 L55,24 L53,28 L55,31 Z" fill="#000"/>
-    </svg>`,
-  ];
+  // ── PRE-BAKE BAT FRAMES ─────────────────────────────────────────────
+  // Draw a bat silhouette onto an offscreen canvas.
+  // s = base unit. pose 0=wings open, 1=wings half-closed, 2=wings closed
+  // The bat is centered at (pad, pad).
+  function bakeBat(s, pose) {
+    const pad = s * 12;
+    const oc  = document.createElement('canvas');
+    oc.width  = pad * 2;
+    oc.height = pad * 2;
+    const c   = oc.getContext('2d');
+    c.translate(pad, pad);
+    c.fillStyle = '#0a0805';
 
-  // Eye positions per pose (cx, cy in viewBox coords, normalized to 0-1)
-  const EYE_POS = [
-    { nx: 23/70, ny: 20/44 },
-    { nx: 23/70, ny: 22/44 },
-    { nx: 23/70, ny: 21/44 },
-  ];
+    // Wing membrane shape changes per pose
+    // tipY: how high/low the wing tips go  (negative = up)
+    // midY: control point height for the membrane arch
+    const poses = [
+      { tipY: s * 0.5,  midY: -s * 4.5, memY: s * 3 },   // wings open flat
+      { tipY: -s * 3,   midY: -s * 6,   memY: s * 1.5 },  // wings raised
+      { tipY: -s * 5.5, midY: -s * 7.5, memY: -s * 1 },   // wings fully up
+    ];
+    const p = poses[pose];
 
-  // Bake each SVG to offscreen canvas — NO filter, pure black
-  const BITMAPS = [];
-  let READY = false;
-  let loadedCount = 0;
+    // LEFT WING — classic bat membrane shape
+    c.beginPath();
+    c.moveTo(-s * 0.5, 0);                             // wing root (body center)
+    // Outer leading edge sweeps to tip
+    c.bezierCurveTo(-s * 2, p.midY * 0.5, -s * 5, p.tipY - s, -s * 9, p.tipY);
+    // Wing tip curves back inward
+    c.bezierCurveTo(-s * 7, p.tipY + s * 1.5, -s * 5, p.memY, -s * 3, p.memY + s);
+    // Inner membrane returns to body
+    c.bezierCurveTo(-s * 2, p.memY + s * 0.5, -s * 1, s * 1, -s * 0.5, s * 0.5);
+    c.closePath();
+    c.fill();
 
-  CROW_SVG.forEach((svg, i) => {
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      const oc = document.createElement('canvas');
-      oc.width = 70; oc.height = 44;
-      oc.getContext('2d').drawImage(img, 0, 0, 70, 44);
-      BITMAPS[i] = oc;
-      URL.revokeObjectURL(url);
-      if (++loadedCount === CROW_SVG.length) READY = true;
-    };
-    img.src = url;
-  });
+    // RIGHT WING — mirror of left
+    c.save();
+    c.scale(-1, 1);
+    c.beginPath();
+    c.moveTo(-s * 0.5, 0);
+    c.bezierCurveTo(-s * 2, p.midY * 0.5, -s * 5, p.tipY - s, -s * 9, p.tipY);
+    c.bezierCurveTo(-s * 7, p.tipY + s * 1.5, -s * 5, p.memY, -s * 3, p.memY + s);
+    c.bezierCurveTo(-s * 2, p.memY + s * 0.5, -s * 1, s * 1, -s * 0.5, s * 0.5);
+    c.closePath();
+    c.fill();
+    c.restore();
+
+    // Wing finger bones (thin lines for detail)
+    c.strokeStyle = '#1a1410';
+    c.lineWidth = s * 0.3;
+    c.globalAlpha = 0.6;
+    [[-3.5, 0.6], [-5.5, 0.75], [-7.5, 0.88]].forEach(([mx, t]) => {
+      const bx = -s * 0.5, by = 0;
+      const tx = -s * 9, ty = p.tipY;
+      c.beginPath();
+      c.moveTo(bx, by);
+      c.lineTo(bx + (tx - bx) * t + s * mx * (1 - t), by + (ty - by) * t);
+      c.stroke();
+      // mirror
+      c.beginPath();
+      c.moveTo(-bx, by);
+      c.lineTo(-bx + (-tx + bx) * t - s * mx * (1 - t), by + (ty - by) * t);
+      c.stroke();
+    });
+    c.globalAlpha = 1;
+
+    // Body — small oval
+    c.fillStyle = '#0a0805';
+    c.beginPath();
+    c.ellipse(0, s * 0.5, s * 1.2, s * 1.8, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // Head — round, slightly larger than body top
+    c.beginPath();
+    c.ellipse(0, -s * 1.2, s * 1.4, s * 1.3, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // Ears — two pointed triangles
+    c.beginPath();
+    c.moveTo(-s * 0.8, -s * 2.2);
+    c.lineTo(-s * 1.8, -s * 4.2);
+    c.lineTo(-s * 0.2, -s * 3.0);
+    c.closePath();
+    c.fill();
+    c.beginPath();
+    c.moveTo(s * 0.8, -s * 2.2);
+    c.lineTo(s * 1.8, -s * 4.2);
+    c.lineTo(s * 0.2, -s * 3.0);
+    c.closePath();
+    c.fill();
+
+    // Store eye position relative to pad (eyes on head)
+    oc._ex = pad;              // centered x
+    oc._ey = pad - s * 1.2;   // head center y
+    oc._pad = pad;
+    return oc;
+  }
+
+  const SM = [bakeBat(3, 0), bakeBat(3, 1), bakeBat(3, 2)];   // normal (small)
+  const LG = [bakeBat(5, 0), bakeBat(5, 1), bakeBat(5, 2)];   // burst (larger)
 
   // ── POOLS ────────────────────────────────────────────────────────────
-  const PI2 = Math.PI * 2;
+  const PI2  = Math.PI * 2;
   const rand = (a, b) => a + Math.random() * (b - a);
   const rInt = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 
-  function makeCrow() {
-    return {
-      active:false, x:0, y:0, vx:0, vy:0, angle:0, rot:0,
-      size:1, opacity:0, life:0, maxLife:0,
-      pose:0, flapT:0, flapRate:5, burst:false,
-      wobbleOff:0,
-      // trail ring buffer
-      tx:[0,0,0], ty:[0,0,0], to:[0,0,0], tIdx:0,
-    };
-  }
-  function makeFeather() {
-    return { active:false, x:0, y:0, vx:0, vy:0, rot:0, rotS:0, opacity:0, life:0, maxLife:0, sz:4 };
-  }
-  function makeSmoke() {
-    return { active:false, x:0, y:0, r:0, maxR:0, opacity:0, life:0, maxLife:0 };
-  }
+  const mkBat = () => ({
+    active: false, x: 0, y: 0, vx: 0, vy: 0,
+    angle: 0, opacity: 0, life: 0, maxLife: 0,
+    pose: 0, flapT: 0, flapRate: 3,
+    burst: false, wobOff: 0, dirFlip: 0,
+    tx: [0,0,0], ty: [0,0,0], to: [0,0,0], tIdx: 0,
+  });
+  const mkFt = () => ({
+    active: false, x: 0, y: 0, vx: 0, vy: 0,
+    rot: 0, rotS: 0, opacity: 0, life: 0, maxLife: 0, sz: 3,
+  });
+  const mkSmk = () => ({
+    active: false, x: 0, y: 0, r: 0, maxR: 0, opacity: 0, life: 0, maxLife: 0,
+  });
 
-  const crowPool    = Array.from({length:60}, makeCrow);
-  const featherPool = Array.from({length:200}, makeFeather);
-  const smokePool   = Array.from({length:60}, makeSmoke);
-  const activeCrows    = [];
-  const activeFeathers = [];
-  const activeSmoke    = [];
-  const shockwaves     = [];
-  let flashAlpha = 0;
+  const batPool = Array.from({ length: 60 }, mkBat);
+  const ftPool  = Array.from({ length: 200 }, mkFt);
+  const smkPool = Array.from({ length: 50 }, mkSmk);
+  const bats    = [], feathers = [], smokes = [], shocks = [];
+  let flashA = 0;
+  const getFree = pool => pool.find(o => !o.active) || null;
 
-  const getFrom = pool => pool.find(o => !o.active) || null;
-
-  // ── SPAWN ─────────────────────────────────────────────────────────────
-  function spawnCrow(x, y, burst) {
-    if (activeCrows.length >= 28) return;
-    const c = getFrom(crowPool); if (!c) return;
+  // ── SPAWN ────────────────────────────────────────────────────────────
+  function spawnBat(x, y, burst) {
+    if (bats.length >= 28) return;
+    const b = getFree(batPool); if (!b) return;
     const angle = rand(0, PI2);
-    // SHORT travel: low speed, short life → short distance
-    const spd = burst ? rand(3.5, 6) : rand(1.2, 2.8);
-    c.active = true;
-    c.x = x + rand(-14, 14); c.y = y + rand(-14, 14);
-    c.vx = Math.cos(angle) * spd; c.vy = Math.sin(angle) * spd;
-    c.angle = angle; c.rot = angle;
-    c.size = burst ? rand(1.4, 1.9) : rand(0.5, 0.75);
-    c.opacity = 0; c.life = 0;
-    // Shorter maxLife = short distance travelled
-    c.maxLife = burst ? rInt(80, 110) : rInt(45, 70);
-    c.pose = rInt(0, 2); c.flapT = 0;
-    c.flapRate = burst ? rInt(7, 10) : rInt(3, 5);
-    c.burst = burst;
-    c.wobbleOff = rand(0, PI2);
-    c.tx.fill(c.x); c.ty.fill(c.y); c.to.fill(0); c.tIdx = 0;
-    activeCrows.push(c);
+    const spd   = burst ? rand(3.5, 6.5) : rand(1.2, 2.8);
+    b.active = true;
+    b.x = x + rand(-10, 10); b.y = y + rand(-10, 10);
+    b.vx = Math.cos(angle) * spd; b.vy = Math.sin(angle) * spd;
+    b.angle = angle; b.opacity = 0; b.life = 0;
+    b.maxLife  = burst ? rInt(70, 100) : rInt(38, 60);
+    b.pose = 0; b.flapT = 0;
+    b.flapRate = burst ? rInt(5, 8) : rInt(2, 4);  // fast erratic flap
+    b.burst = burst; b.wobOff = rand(0, PI2);
+    b.dirFlip = rInt(15, 30); // frames between random direction nudges
+    b.tx.fill(b.x); b.ty.fill(b.y); b.to.fill(0); b.tIdx = 0;
+    bats.push(b);
   }
 
-  function spawnFeathers(x, y, n) {
+  function spawnDust(x, y, n) {
     for (let i = 0; i < n; i++) {
-      const f = getFrom(featherPool); if (!f) break;
-      f.active = true; f.x = x+rand(-8,8); f.y = y+rand(-8,8);
-      f.vx = rand(-1.8,1.8); f.vy = rand(-1.8,0.5);
-      f.rot = rand(0, PI2); f.rotS = rand(-0.1, 0.1);
-      f.opacity = 0.85; f.life = 0;
-      f.maxLife = rInt(40, 65); f.sz = rand(3, 6);
-      activeFeathers.push(f);
+      const f = getFree(ftPool); if (!f) break;
+      f.active = true; f.x = x + rand(-6, 6); f.y = y + rand(-6, 6);
+      f.vx = rand(-1.5, 1.5); f.vy = rand(-1.8, 0.4);
+      f.rot = rand(0, PI2); f.rotS = rand(-0.15, 0.15);
+      f.opacity = 0.8; f.life = 0;
+      f.maxLife = rInt(30, 55); f.sz = rand(2, 4);
+      feathers.push(f);
     }
   }
 
   function spawnSmoke(x, y) {
-    const s = getFrom(smokePool); if (!s) return;
+    const s = getFree(smkPool); if (!s) return;
     s.active = true; s.x = x; s.y = y;
-    s.r = 2; s.maxR = rand(20, 36);
-    s.opacity = 0.18; s.life = 0; s.maxLife = 30;
-    activeSmoke.push(s);
+    s.r = 1; s.maxR = rand(14, 28);
+    s.opacity = 0.15; s.life = 0; s.maxLife = 24;
+    smokes.push(s);
   }
 
-  function spawnShockwave(x, y) {
-    shockwaves.push({ x, y, r:4, maxR:140, opacity:0.45, life:0, maxLife:36 });
-    flashAlpha = 0.05;
+  function spawnShock(x, y) {
+    shocks.push({ x, y, r: 4, maxR: 120, opacity: 0.45, life: 0, maxLife: 32 });
+    flashA = 0.06;
   }
 
   // ── UPDATE ────────────────────────────────────────────────────────────
-  function updateCrows() {
-    for (let i = activeCrows.length - 1; i >= 0; i--) {
-      const c = activeCrows[i];
-      c.life++;
+  function update() {
+    for (let i = bats.length - 1; i >= 0; i--) {
+      const b = bats[i]; b.life++;
 
-      // Fade in (fast)
-      if (c.life <= 5) c.opacity = (c.life / 5) * 0.9;
+      // Fade in/out
+      if (b.life <= 4) b.opacity = (b.life / 4) * 0.9;
+      const fs = b.maxLife - 18;
+      if (b.life > fs) b.opacity = 0.9 * (1 - (b.life - fs) / 18);
 
-      // Fade out (last 20 frames)
-      const fs = c.maxLife - 20;
-      if (c.life > fs) c.opacity = 0.9 * (1 - (c.life - fs) / 20);
+      // Bat-like erratic movement: random direction nudges + strong wobble
+      if (b.life % b.dirFlip === 0) {
+        b.angle += rand(-0.8, 0.8); // sudden direction change
+      }
+      b.vx *= 0.96; b.vy *= 0.96;
+      b.angle += rand(-0.03, 0.03); // constant micro-drift
+      // Bats zigzag: alternating perpendicular wobble
+      const zigzag = Math.sin(b.life * 0.35 + b.wobOff) * 1.8;
+      b.x += b.vx + (-Math.sin(b.angle)) * zigzag;
+      b.y += b.vy + ( Math.cos(b.angle)) * zigzag;
 
-      // Organic curved flight: strong sin-wave wobble + velocity slowdown
-      c.vx *= 0.985; c.vy *= 0.985; // gradual deceleration
-      const wobble = Math.sin(c.life * 0.22 + c.wobbleOff) * 1.2;
-      const px = -Math.sin(c.angle), py = Math.cos(c.angle);
-      c.x += c.vx + px * wobble;
-      c.y += c.vy + py * wobble;
-
-      // Rotation smoothly follows travel direction
-      c.rot += (c.angle - c.rot) * 0.12;
-      // Gradually curve the angle (makes flight arc rather than straight)
-      c.angle += rand(-0.04, 0.04);
-
-      // Wing flap
-      if (++c.flapT >= c.flapRate) { c.flapT = 0; c.pose = (c.pose + 1) % 3; }
+      // Fast flap cycle (bats flap ~10-15x/sec)
+      if (++b.flapT >= b.flapRate) { b.flapT = 0; b.pose = (b.pose + 1) % 3; }
 
       // Trail
-      const ti = c.tIdx % 3;
-      c.tx[ti] = c.x; c.ty[ti] = c.y; c.to[ti] = c.opacity;
-      c.tIdx++;
+      const ti = b.tIdx % 3;
+      b.tx[ti] = b.x; b.ty[ti] = b.y; b.to[ti] = b.opacity; b.tIdx++;
 
-      // Death
-      if (c.life >= c.maxLife) {
-        c.active = false; activeCrows.splice(i, 1);
-        spawnFeathers(c.x, c.y, c.burst ? rInt(7, 11) : rInt(3, 5));
-        spawnSmoke(c.x, c.y);
+      if (b.life >= b.maxLife) {
+        b.active = false; bats.splice(i, 1);
+        spawnDust(b.x, b.y, b.burst ? rInt(6, 9) : rInt(2, 4));
+        spawnSmoke(b.x, b.y);
       }
     }
-  }
 
-  function updateFeathers() {
-    for (let i = activeFeathers.length - 1; i >= 0; i--) {
-      const f = activeFeathers[i];
-      f.life++; f.x += f.vx; f.y += f.vy;
-      f.vy += 0.05; f.rot += f.rotS;
-      f.opacity = 0.85 * (1 - f.life / f.maxLife);
-      if (f.life >= f.maxLife) { f.active = false; activeFeathers.splice(i, 1); }
+    for (let i = feathers.length - 1; i >= 0; i--) {
+      const f = feathers[i]; f.life++;
+      f.x += f.vx; f.y += f.vy; f.vy += 0.06;
+      f.rot += f.rotS;
+      f.opacity = 0.8 * (1 - f.life / f.maxLife);
+      if (f.life >= f.maxLife) { f.active = false; feathers.splice(i, 1); }
     }
-  }
 
-  function updateSmoke() {
-    for (let i = activeSmoke.length - 1; i >= 0; i--) {
-      const s = activeSmoke[i]; s.life++;
+    for (let i = smokes.length - 1; i >= 0; i--) {
+      const s = smokes[i]; s.life++;
       const t = s.life / s.maxLife;
-      s.r = 2 + (s.maxR - 2) * t; s.opacity = 0.18 * (1 - t);
-      if (s.life >= s.maxLife) { s.active = false; activeSmoke.splice(i, 1); }
+      s.r = 1 + (s.maxR - 1) * t; s.opacity = 0.15 * (1 - t);
+      if (s.life >= s.maxLife) { s.active = false; smokes.splice(i, 1); }
     }
-  }
 
-  function updateShockwaves() {
-    for (let i = shockwaves.length - 1; i >= 0; i--) {
-      const sw = shockwaves[i]; sw.life++;
+    for (let i = shocks.length - 1; i >= 0; i--) {
+      const sw = shocks[i]; sw.life++;
       const t = sw.life / sw.maxLife;
       sw.r = 4 + (sw.maxR - 4) * t;
       sw.opacity = 0.45 * (1 - t) * (1 - t);
-      if (sw.life >= sw.maxLife) shockwaves.splice(i, 1);
+      if (sw.life >= sw.maxLife) shocks.splice(i, 1);
     }
-    if (flashAlpha > 0) flashAlpha -= 0.004;
+    if (flashA > 0) flashA -= 0.005;
   }
 
-  // ── RENDER ─────────────────────────────────────────────────────────────
+  // ── RENDER ────────────────────────────────────────────────────────────
   function render() {
-    const W = window.innerWidth, H = window.innerHeight;
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-    // Screen flash
-    if (flashAlpha > 0) {
-      ctx.fillStyle = `rgba(255,210,190,${flashAlpha})`;
-      ctx.fillRect(0, 0, W, H);
+    if (flashA > 0) {
+      ctx.fillStyle = `rgba(180,0,0,${flashA * 0.4})`;
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
     }
 
-    // Smoke
-    for (const s of activeSmoke) {
+    // Smoke wisps
+    for (const s of smokes) {
       const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
-      g.addColorStop(0, `rgba(10,8,15,${s.opacity * 1.3})`);
-      g.addColorStop(1, 'rgba(10,8,15,0)');
+      g.addColorStop(0, `rgba(5,3,8,${s.opacity * 2})`);
+      g.addColorStop(1, 'rgba(5,3,8,0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, PI2); ctx.fill();
     }
 
     // Shockwaves
-    for (const sw of shockwaves) {
+    for (const sw of shocks) {
       ctx.save();
-      ctx.strokeStyle = `rgba(255,30,30,${sw.opacity})`;
-      ctx.lineWidth = 2;
-      ctx.shadowColor = '#FF0000'; ctx.shadowBlur = 14;
+      ctx.strokeStyle = `rgba(200,0,0,${sw.opacity})`;
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#FF0000'; ctx.shadowBlur = 18;
       ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.r, 0, PI2); ctx.stroke();
       ctx.restore();
     }
 
-    // Feathers
-    for (const f of activeFeathers) {
+    // Dust particles
+    for (const f of feathers) {
       ctx.save();
       ctx.globalAlpha = f.opacity;
-      ctx.fillStyle = '#111';
+      ctx.fillStyle = '#1a0f05';
       ctx.translate(f.x, f.y); ctx.rotate(f.rot);
-      ctx.beginPath(); ctx.ellipse(0, 0, f.sz * 0.25, f.sz, 0, 0, PI2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(0, 0, f.sz * 0.3, f.sz, 0, 0, PI2);
+      ctx.fill();
       ctx.restore();
     }
 
-    // Crows
-    if (!READY) return;
+    // Bats
+    for (const b of bats) {
+      const set = b.burst ? LG : SM;
+      const bmp = set[b.pose];
+      const sc  = b.burst ? 0.7 : 0.45; // keep bats SMALL
+      const dw  = bmp.width  * sc;
+      const dh  = bmp.height * sc;
+      const pad = bmp._pad   * sc;
 
-    for (const c of activeCrows) {
-      const bmp = BITMAPS[c.pose];
-      if (!bmp) continue;
-      const dw = bmp.width  * c.size;
-      const dh = bmp.height * c.size;
-      const ep = EYE_POS[c.pose];
-      // Eye position in world space (account for rotation)
-      const ex_local = ep.nx * dw - dw / 2;
-      const ey_local = ep.ny * dh - dh / 2;
-      const cosR = Math.cos(c.rot), sinR = Math.sin(c.rot);
-      const ex = c.x + ex_local * cosR - ey_local * sinR;
-      const ey = c.y + ex_local * sinR + ey_local * cosR;
-
-      // Trail echoes (ghost copies behind crow)
+      // Ghost trail echoes
       for (let t = 0; t < 3; t++) {
-        const age = (c.tIdx - 1 - t + 3) % 3;
-        const toA = c.to[age] * (0.22 - t * 0.07);
-        if (toA <= 0.01) continue;
+        const idx = (b.tIdx - 1 - t + 3) % 3;
+        const a   = b.to[idx] * (0.15 - t * 0.04);
+        if (a < 0.02) continue;
         ctx.save();
-        ctx.globalAlpha = toA;
-        ctx.translate(c.tx[age], c.ty[age]); ctx.rotate(c.rot);
-        ctx.drawImage(bmp, -dw/2, -dh/2, dw, dh);
+        ctx.globalAlpha = a;
+        ctx.translate(b.tx[idx], b.ty[idx]);
+        ctx.rotate(b.angle);
+        ctx.drawImage(bmp, -pad, -pad, dw, dh);
         ctx.restore();
       }
 
-      // Main crow — solid black, no filter
+      // Main bat
       ctx.save();
-      ctx.globalAlpha = c.opacity;
-      ctx.translate(c.x, c.y); ctx.rotate(c.rot);
-      ctx.drawImage(bmp, -dw/2, -dh/2, dw, dh);
+      ctx.globalAlpha = b.opacity;
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.angle);
+      ctx.drawImage(bmp, -pad, -pad, dw, dh);
       ctx.restore();
 
-      // Red glowing eye — drawn separately with shadowBlur only on the dot
-      const eyeR = c.burst ? 3.5 * c.size : 2.5 * c.size;
+      // Glowing red eyes (two dots on head)
+      const er = (b.burst ? 3.2 : 2.0) * sc;
+      // Eye offset from bat center (head is above center in bat bitmap)
+      const eyOffY = (bmp._ey - bmp._pad) * sc;
+      const cosA = Math.cos(b.angle), sinA = Math.sin(b.angle);
+      const eyWorldX = b.x - eyOffY * sinA;
+      const eyWorldY = b.y + eyOffY * cosA;
+      const eySpacing = er * 1.5;
+
       ctx.save();
-      ctx.globalAlpha = c.opacity;
+      ctx.globalAlpha = b.opacity;
       ctx.shadowColor = '#FF0000';
-      ctx.shadowBlur = c.burst ? 18 : 10;
-      ctx.fillStyle = '#FF1A00';
-      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, PI2); ctx.fill();
-      // Inner bright dot
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFAAAA';
-      ctx.beginPath(); ctx.arc(ex, ey, eyeR * 0.4, 0, PI2); ctx.fill();
+      ctx.shadowBlur  = b.burst ? 16 : 9;
+      ctx.fillStyle   = '#FF1200';
+      // Left eye
+      ctx.beginPath();
+      ctx.arc(eyWorldX - eySpacing * cosA + eySpacing * sinA * 0.5,
+              eyWorldY - eySpacing * sinA - eySpacing * cosA * 0.5, er, 0, PI2);
+      ctx.fill();
+      // Right eye
+      ctx.beginPath();
+      ctx.arc(eyWorldX + eySpacing * cosA - eySpacing * sinA * 0.5,
+              eyWorldY + eySpacing * sinA + eySpacing * cosA * 0.5, er, 0, PI2);
+      ctx.fill();
+      // Bright specular
+      ctx.shadowBlur = 0; ctx.fillStyle = '#FFCCCC';
+      ctx.beginPath();
+      ctx.arc(eyWorldX - eySpacing * cosA + eySpacing * sinA * 0.5,
+              eyWorldY - eySpacing * sinA - eySpacing * cosA * 0.5, er * 0.35, 0, PI2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(eyWorldX + eySpacing * cosA - eySpacing * sinA * 0.5,
+              eyWorldY + eySpacing * sinA + eySpacing * cosA * 0.5, er * 0.35, 0, PI2);
+      ctx.fill();
       ctx.restore();
     }
   }
 
   // ── LOOP ─────────────────────────────────────────────────────────────
   let running = true;
-  function tick() {
+  (function tick() {
     if (!running) return;
-    updateCrows(); updateFeathers(); updateSmoke(); updateShockwaves();
-    render();
+    update(); render();
     requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
+  })();
 
-  // ── MOUSE → SPAWN (High intensity: throttle 40ms, 2-3 crows) ─────────
-  let lastT = 0, lastMoveT = Date.now();
+  // ── EVENTS ───────────────────────────────────────────────────────────
+  let lastT = 0, lastMv = Date.now();
 
   window.addEventListener('mousemove', e => {
-    lastMoveT = Date.now();
+    lastMv = Date.now();
     const now = performance.now();
-    if (now - lastT < 40) return; // 40ms throttle = ~25 triggers/sec
+    if (now - lastT < 40) return;
     lastT = now;
-    const n = Math.floor(2 + Math.random() * 2); // 2-3 per event
-    for (let i = 0; i < n; i++) spawnCrow(e.clientX, e.clientY, false);
-  }, { passive:true });
+    const n = 2 + Math.floor(Math.random() * 2); // 2–3 per event
+    for (let i = 0; i < n; i++) spawnBat(e.clientX, e.clientY, false);
+  }, { passive: true });
 
-  // ── TRIPLE-CLICK BURST ────────────────────────────────────────────────
   const clicks = [];
   window.addEventListener('click', e => {
     const now = Date.now();
@@ -358,22 +389,26 @@
     while (clicks.length && clicks[0] < now - 1000) clicks.shift();
     if (clicks.length >= 3) {
       clicks.length = 0;
-      const n = 8 + Math.floor(Math.random() * 6); // 8-13
-      for (let i = 0; i < n; i++) spawnCrow(e.clientX, e.clientY, true);
-      spawnShockwave(e.clientX, e.clientY);
+      const n = 10 + Math.floor(Math.random() * 6);
+      for (let i = 0; i < n; i++) spawnBat(e.clientX, e.clientY, true);
+      spawnShock(e.clientX, e.clientY);
     }
   });
 
-  // ── IDLE AMBIENT ──────────────────────────────────────────────────────
+  // Idle ambient bats
   let idleTmr = null;
   setInterval(() => {
-    const idle = Date.now() - lastMoveT > 5000;
+    const idle = Date.now() - lastMv > 5000;
     if (idle && !idleTmr) {
-      idleTmr = setInterval(() => {
-        spawnCrow(rand(80, window.innerWidth-80), rand(80, window.innerHeight-80), false);
-      }, 3000);
+      idleTmr = setInterval(() => spawnBat(
+        rand(80, window.innerWidth - 80), rand(80, window.innerHeight - 80), false
+      ), 2800);
     } else if (!idle && idleTmr) { clearInterval(idleTmr); idleTmr = null; }
   }, 800);
 
-  window.__itachiCrowDestroy = () => { running = false; if(idleTmr) clearInterval(idleTmr); canvas.remove(); };
+  window.__batDestroy = () => {
+    running = false;
+    if (idleTmr) clearInterval(idleTmr);
+    canvas.remove();
+  };
 })();
