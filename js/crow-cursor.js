@@ -1,45 +1,19 @@
-// ═══════════════════════════════════════════════════════════════════════
-// crow-cursor.js — Itachi Uchiha Crow Genjutsu Cursor Effect
-// Pure SVG silhouettes + Canvas particle system | 60fps | Drop-in module
-// ═══════════════════════════════════════════════════════════════════════
-
+// crow-cursor.js — Itachi Crow Genjutsu | Fixed: solid black body, red eye glow in canvas
 (function CrowGenjutsu() {
   'use strict';
 
-  // ── CONFIG ──────────────────────────────────────────────────────────
-  const CFG = {
-    intensity:        'medium',   // 'low' | 'medium' | 'high'
-    crowColor:        '#0a0a0a',
-    eyeColor:         '#FF1A1A',
-    maxCrows:         22,
-    maxFeathers:      180,
-    maxSmoke:         50,
-    enableOnMobile:   false,
-    idleTimeout:      5000,       // ms before ambient crows appear
-    idleSpawnInterval:3200,       // ms between ambient crow spawns
-  };
-
-  const INTENSITY_MAP = {
-    low:    { spawnMin:1, spawnMax:1, burstMin:5,  burstMax:8,  throttle:90  },
-    medium: { spawnMin:1, spawnMax:2, burstMin:8,  burstMax:12, throttle:65  },
-    high:   { spawnMin:2, spawnMax:3, burstMin:10, burstMax:14, throttle:45  },
-  };
-  const INT = INTENSITY_MAP[CFG.intensity];
-
-  // ── ACCESSIBILITY & DEVICE GUARD ────────────────────────────────────
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  if (isTouch && !CFG.enableOnMobile) return;
+  if (('ontouchstart' in window || navigator.maxTouchPoints > 0)) return;
 
-  // ── CANVAS SETUP ───────────────────────────────────────────────────
+  // ── CANVAS ──────────────────────────────────────────────────────────
   const canvas = document.createElement('canvas');
   Object.assign(canvas.style, {
     position:'fixed', top:'0', left:'0', width:'100vw', height:'100vh',
-    zIndex:'99999', pointerEvents:'none', display:'block',
+    zIndex:'99999', pointerEvents:'none',
   });
   document.body.appendChild(canvas);
   const ctx = canvas.getContext('2d');
-  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const DPR = Math.min(devicePixelRatio || 1, 2);
 
   function resize() {
     canvas.width  = window.innerWidth  * DPR;
@@ -47,228 +21,187 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
   resize();
-  window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener('resize', resize, { passive:true });
 
-  // ── PREMIUM SVG CROW SILHOUETTES ────────────────────────────────────
-  // Three wing poses for a fluid flap cycle. Each is a 80x52 viewBox.
-  // Paths are hand-crafted for clear crow silhouette at small sizes.
-  const EYE  = CFG.eyeColor;
-  const BODY = CFG.crowColor;
-
-  const CROW_SVGS = [
-    // POSE 0 — Wings Down (gliding)
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 52">
-      <!-- Body -->
-      <ellipse cx="40" cy="30" rx="12" ry="7" fill="${BODY}"/>
-      <!-- Head -->
-      <ellipse cx="30" cy="24" rx="7" ry="6" fill="${BODY}"/>
-      <!-- Beak -->
-      <polygon points="23,24 18,22 23,26" fill="${BODY}"/>
-      <!-- Tail -->
-      <polygon points="52,30 60,27 60,33" fill="${BODY}"/>
-      <!-- Left Wing — swept downward -->
-      <path d="M36,28 C28,32 16,38 4,42 C10,36 18,30 36,26 Z" fill="${BODY}"/>
-      <!-- Right Wing — swept downward -->
-      <path d="M44,28 C52,32 64,38 76,42 C70,36 62,30 44,26 Z" fill="${BODY}"/>
-      <!-- Eye glow -->
-      <circle cx="28" cy="23" r="2.2" fill="${EYE}"/>
-      <circle cx="28" cy="23" r="1" fill="#fff" opacity="0.6"/>
+  // ── SVG CROW — Pure black body only, NO filter baked in ─────────────
+  // Eye is drawn separately in canvas so glow stays red on the dot only
+  const CROW_SVG = [
+    // Pose 0: wings angled downward (glide)
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 44">
+      <ellipse cx="35" cy="26" rx="11" ry="6" fill="#000"/>
+      <ellipse cx="25" cy="21" rx="6.5" ry="5.5" fill="#000"/>
+      <polygon points="19,21 13,19.5 19,23" fill="#000"/>
+      <path d="M30,25 C22,31 10,37 0,40 C7,33 16,27 30,23Z" fill="#000"/>
+      <path d="M40,25 C48,31 60,37 70,40 C63,33 54,27 40,23Z" fill="#000"/>
+      <polygon points="46,26 56,23 56,29" fill="#000"/>
     </svg>`,
-
-    // POSE 1 — Wings Up (upstroke)
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 52">
-      <!-- Body -->
-      <ellipse cx="40" cy="32" rx="12" ry="7" fill="${BODY}"/>
-      <!-- Head -->
-      <ellipse cx="30" cy="26" rx="7" ry="6" fill="${BODY}"/>
-      <!-- Beak -->
-      <polygon points="23,26 18,24 23,28" fill="${BODY}"/>
-      <!-- Tail -->
-      <polygon points="52,32 60,29 60,35" fill="${BODY}"/>
-      <!-- Left Wing — raised upward -->
-      <path d="M36,28 C30,20 18,10 4,6 C10,14 20,22 36,30 Z" fill="${BODY}"/>
-      <!-- Right Wing — raised upward -->
-      <path d="M44,28 C50,20 62,10 76,6 C70,14 60,22 44,30 Z" fill="${BODY}"/>
-      <!-- Eye glow -->
-      <circle cx="28" cy="25" r="2.2" fill="${EYE}"/>
-      <circle cx="28" cy="25" r="1" fill="#fff" opacity="0.6"/>
+    // Pose 1: wings raised upward (upstroke)
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 44">
+      <ellipse cx="35" cy="28" rx="11" ry="6" fill="#000"/>
+      <ellipse cx="25" cy="23" rx="6.5" ry="5.5" fill="#000"/>
+      <polygon points="19,23 13,21.5 19,25" fill="#000"/>
+      <path d="M30,25 C24,17 12,8 0,4 C7,12 17,20 30,27Z" fill="#000"/>
+      <path d="M40,25 C46,17 58,8 70,4 C63,12 53,20 40,27Z" fill="#000"/>
+      <polygon points="46,28 56,25 56,31" fill="#000"/>
     </svg>`,
-
-    // POSE 2 — Wings Wide (fully extended, mid-flap)
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 52">
-      <!-- Body -->
-      <ellipse cx="40" cy="30" rx="11" ry="6.5" fill="${BODY}"/>
-      <!-- Head -->
-      <ellipse cx="30" cy="25" rx="7" ry="6" fill="${BODY}"/>
-      <!-- Beak -->
-      <polygon points="23,25 17,23 23,27" fill="${BODY}"/>
-      <!-- Tail — forked -->
-      <path d="M52,30 L62,25 L58,31 L62,36 Z" fill="${BODY}"/>
-      <!-- Left Wing — horizontal, wide -->
-      <path d="M36,27 C26,24 14,20 2,18 C10,22 22,26 36,29 Z" fill="${BODY}"/>
-      <!-- Right Wing — horizontal, wide -->
-      <path d="M44,27 C54,24 66,20 78,18 C70,22 58,26 44,29 Z" fill="${BODY}"/>
-      <!-- Primary feathers left -->
-      <path d="M20,21 C16,19 10,20 4,18" stroke="${BODY}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Primary feathers right -->
-      <path d="M60,21 C64,19 70,20 76,18" stroke="${BODY}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Eye glow -->
-      <circle cx="28" cy="24" r="2.2" fill="${EYE}"/>
-      <circle cx="28" cy="24" r="1" fill="#fff" opacity="0.6"/>
+    // Pose 2: wings fully extended (mid-flap)
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 44">
+      <ellipse cx="35" cy="27" rx="11" ry="6" fill="#000"/>
+      <ellipse cx="25" cy="22" rx="6.5" ry="5.5" fill="#000"/>
+      <polygon points="19,22 13,20.5 19,24" fill="#000"/>
+      <path d="M30,25 C20,23 9,21 0,20 C8,23 19,26 30,27Z" fill="#000"/>
+      <path d="M40,25 C50,23 61,21 70,20 C62,23 51,26 40,27Z" fill="#000"/>
+      <path d="M8,21 C5,20 2,21 0,20" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M62,21 C65,20 68,21 70,20" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M46,27 L55,24 L53,28 L55,31 Z" fill="#000"/>
     </svg>`,
   ];
 
-  // ── OFFSCREEN BITMAP CACHE ─────────────────────────────────────────
-  // Bake each SVG pose into an OffscreenCanvas at normal & large size.
-  // The eye-glow filter is applied here so canvas.drawImage() is fast.
-  const BITMAPS_SMALL = [];  // 80×52 display pixels
-  const BITMAPS_LARGE = [];  // 160×104 display pixels
-  let BITMAPS_READY = false;
+  // Eye positions per pose (cx, cy in viewBox coords, normalized to 0-1)
+  const EYE_POS = [
+    { nx: 23/70, ny: 20/44 },
+    { nx: 23/70, ny: 22/44 },
+    { nx: 23/70, ny: 21/44 },
+  ];
 
-  function bake(svgStr, w, h, glowPx) {
-    return new Promise(resolve => {
-      const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-      const url  = URL.createObjectURL(blob);
-      const img  = new Image();
-      img.onload = () => {
-        const oc  = document.createElement('canvas');
-        oc.width  = w; oc.height = h;
-        const ox  = oc.getContext('2d');
-        ox.filter = `drop-shadow(0 0 ${glowPx}px ${CFG.eyeColor}) `
-                  + `drop-shadow(0 0 ${glowPx * 2}px ${CFG.eyeColor}88)`;
-        ox.drawImage(img, 0, 0, w, h);
-        URL.revokeObjectURL(url);
-        resolve(oc);
-      };
-      img.onerror = () => resolve(null);
-      img.src = url;
-    });
-  }
+  // Bake each SVG to offscreen canvas — NO filter, pure black
+  const BITMAPS = [];
+  let READY = false;
+  let loadedCount = 0;
 
-  Promise.all(
-    CROW_SVGS.flatMap((svg, i) => [
-      bake(svg, 80, 52,  4).then(b => BITMAPS_SMALL[i] = b),
-      bake(svg, 160, 104, 7).then(b => BITMAPS_LARGE[i] = b),
-    ])
-  ).then(() => { BITMAPS_READY = true; });
+  CROW_SVG.forEach((svg, i) => {
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const oc = document.createElement('canvas');
+      oc.width = 70; oc.height = 44;
+      oc.getContext('2d').drawImage(img, 0, 0, 70, 44);
+      BITMAPS[i] = oc;
+      URL.revokeObjectURL(url);
+      if (++loadedCount === CROW_SVG.length) READY = true;
+    };
+    img.src = url;
+  });
 
-  // ── UTILITY ────────────────────────────────────────────────────────
-  const PI2  = Math.PI * 2;
+  // ── POOLS ────────────────────────────────────────────────────────────
+  const PI2 = Math.PI * 2;
   const rand = (a, b) => a + Math.random() * (b - a);
-  const rInt = (a, b) => Math.floor(rand(a, b + 0.99));
+  const rInt = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 
-  // ── OBJECT POOLS ───────────────────────────────────────────────────
   function makeCrow() {
-    return { active:false, x:0, y:0, vx:0, vy:0, angle:0, rot:0,
-             size:1, opacity:0, life:0, maxLife:0,
-             pose:0, flapT:0, flapRate:5, burst:false,
-             wobblePhase:0, wobbleAmp:0,
-             tx:[0,0,0], ty:[0,0,0], to:[0,0,0], tHead:0 };
+    return {
+      active:false, x:0, y:0, vx:0, vy:0, angle:0, rot:0,
+      size:1, opacity:0, life:0, maxLife:0,
+      pose:0, flapT:0, flapRate:5, burst:false,
+      wobbleOff:0,
+      // trail ring buffer
+      tx:[0,0,0], ty:[0,0,0], to:[0,0,0], tIdx:0,
+    };
   }
   function makeFeather() {
-    return { active:false, x:0, y:0, vx:0, vy:0,
-             rot:0, rotSpd:0, opacity:0, life:0, maxLife:0, sz:5 };
+    return { active:false, x:0, y:0, vx:0, vy:0, rot:0, rotS:0, opacity:0, life:0, maxLife:0, sz:4 };
   }
   function makeSmoke() {
     return { active:false, x:0, y:0, r:0, maxR:0, opacity:0, life:0, maxLife:0 };
   }
 
   const crowPool    = Array.from({length:60}, makeCrow);
-  const featherPool = Array.from({length:CFG.maxFeathers}, makeFeather);
-  const smokePool   = Array.from({length:CFG.maxSmoke}, makeSmoke);
-  const activeCrows = [], activeFeathers = [], activeSmoke = [];
-  const shockwaves  = [];
-  let   flashAlpha  = 0;
+  const featherPool = Array.from({length:200}, makeFeather);
+  const smokePool   = Array.from({length:60}, makeSmoke);
+  const activeCrows    = [];
+  const activeFeathers = [];
+  const activeSmoke    = [];
+  const shockwaves     = [];
+  let flashAlpha = 0;
 
-  function getCrow()    { return crowPool.find(c => !c.active)    || (crowPool.length < 90    ? (crowPool.push(makeCrow()),    crowPool[crowPool.length-1])    : null); }
-  function getFeather() { return featherPool.find(f => !f.active) || null; }
-  function getSmoke()   { return smokePool.find(s => !s.active)   || null; }
+  const getFrom = pool => pool.find(o => !o.active) || null;
 
-  // ── SPAWN FUNCTIONS ────────────────────────────────────────────────
+  // ── SPAWN ─────────────────────────────────────────────────────────────
   function spawnCrow(x, y, burst) {
-    if (activeCrows.length >= CFG.maxCrows) return;
-    const c = getCrow(); if (!c) return;
+    if (activeCrows.length >= 28) return;
+    const c = getFrom(crowPool); if (!c) return;
     const angle = rand(0, PI2);
-    const spd   = burst ? rand(7, 13) : rand(2.5, 5.5);
-    c.active = true; c.x = x + rand(-18,18); c.y = y + rand(-18,18);
+    // SHORT travel: low speed, short life → short distance
+    const spd = burst ? rand(3.5, 6) : rand(1.2, 2.8);
+    c.active = true;
+    c.x = x + rand(-14, 14); c.y = y + rand(-14, 14);
     c.vx = Math.cos(angle) * spd; c.vy = Math.sin(angle) * spd;
     c.angle = angle; c.rot = angle;
-    c.size = burst ? rand(1.7, 2.2) : rand(0.55, 0.8);
+    c.size = burst ? rand(1.4, 1.9) : rand(0.5, 0.75);
     c.opacity = 0; c.life = 0;
-    c.maxLife  = burst ? rInt(130, 190) : rInt(75, 110);
+    // Shorter maxLife = short distance travelled
+    c.maxLife = burst ? rInt(80, 110) : rInt(45, 70);
     c.pose = rInt(0, 2); c.flapT = 0;
-    c.flapRate = burst ? rInt(7, 10) : rInt(4, 6);
+    c.flapRate = burst ? rInt(7, 10) : rInt(3, 5);
     c.burst = burst;
-    c.wobblePhase = rand(0, PI2);
-    c.wobbleAmp   = rand(0.3, 0.9);
-    c.tx.fill(c.x); c.ty.fill(c.y); c.to.fill(0); c.tHead = 0;
+    c.wobbleOff = rand(0, PI2);
+    c.tx.fill(c.x); c.ty.fill(c.y); c.to.fill(0); c.tIdx = 0;
     activeCrows.push(c);
   }
 
-  function spawnFeathers(x, y, count) {
-    for (let i = 0; i < count; i++) {
-      const f = getFeather(); if (!f) break;
-      f.active = true; f.x = x+rand(-10,10); f.y = y+rand(-10,10);
-      f.vx = rand(-2,2); f.vy = rand(-2,0.5);
-      f.rot = rand(0,PI2); f.rotSpd = rand(-0.1,0.1);
-      f.opacity = 0.9; f.life = 0;
-      f.maxLife = rInt(50, 80); f.sz = rand(3,7);
+  function spawnFeathers(x, y, n) {
+    for (let i = 0; i < n; i++) {
+      const f = getFrom(featherPool); if (!f) break;
+      f.active = true; f.x = x+rand(-8,8); f.y = y+rand(-8,8);
+      f.vx = rand(-1.8,1.8); f.vy = rand(-1.8,0.5);
+      f.rot = rand(0, PI2); f.rotS = rand(-0.1, 0.1);
+      f.opacity = 0.85; f.life = 0;
+      f.maxLife = rInt(40, 65); f.sz = rand(3, 6);
       activeFeathers.push(f);
     }
   }
 
   function spawnSmoke(x, y) {
-    const s = getSmoke(); if (!s) return;
+    const s = getFrom(smokePool); if (!s) return;
     s.active = true; s.x = x; s.y = y;
-    s.r = 2; s.maxR = rand(24, 42);
-    s.opacity = 0.18; s.life = 0; s.maxLife = 38;
+    s.r = 2; s.maxR = rand(20, 36);
+    s.opacity = 0.18; s.life = 0; s.maxLife = 30;
     activeSmoke.push(s);
   }
 
   function spawnShockwave(x, y) {
-    shockwaves.push({ x, y, r:4, maxR:160, opacity:0.4, life:0, maxLife:40 });
-    // brief screen flash
-    flashAlpha = 0.06;
+    shockwaves.push({ x, y, r:4, maxR:140, opacity:0.45, life:0, maxLife:36 });
+    flashAlpha = 0.05;
   }
 
-  // ── UPDATE ─────────────────────────────────────────────────────────
+  // ── UPDATE ────────────────────────────────────────────────────────────
   function updateCrows() {
     for (let i = activeCrows.length - 1; i >= 0; i--) {
       const c = activeCrows[i];
       c.life++;
 
-      // Fade in
-      if (c.life <= 7) c.opacity = (c.life / 7) * 0.88;
+      // Fade in (fast)
+      if (c.life <= 5) c.opacity = (c.life / 5) * 0.9;
 
-      // Fade out
-      const fadeStart = c.maxLife - 26;
-      if (c.life > fadeStart) {
-        const t = (c.life - fadeStart) / 26;
-        c.opacity = 0.88 * (1 - t);
-        c.size += 0.004; // subtle death bloom
-      }
+      // Fade out (last 20 frames)
+      const fs = c.maxLife - 20;
+      if (c.life > fs) c.opacity = 0.9 * (1 - (c.life - fs) / 20);
 
-      // Wobble flight path (sin wave perpendicular to travel)
-      const wobble = Math.sin(c.life * 0.13 + c.wobblePhase) * c.wobbleAmp;
-      c.x += c.vx + (-Math.sin(c.angle)) * wobble;
-      c.y += c.vy + ( Math.cos(c.angle)) * wobble;
+      // Organic curved flight: strong sin-wave wobble + velocity slowdown
+      c.vx *= 0.985; c.vy *= 0.985; // gradual deceleration
+      const wobble = Math.sin(c.life * 0.22 + c.wobbleOff) * 1.2;
+      const px = -Math.sin(c.angle), py = Math.cos(c.angle);
+      c.x += c.vx + px * wobble;
+      c.y += c.vy + py * wobble;
 
-      // Smoothly rotate to face direction of travel
-      c.rot += (c.angle - c.rot) * 0.1;
+      // Rotation smoothly follows travel direction
+      c.rot += (c.angle - c.rot) * 0.12;
+      // Gradually curve the angle (makes flight arc rather than straight)
+      c.angle += rand(-0.04, 0.04);
 
-      // Wing flap cycle
+      // Wing flap
       if (++c.flapT >= c.flapRate) { c.flapT = 0; c.pose = (c.pose + 1) % 3; }
 
-      // Trail ghost positions (ring buffer)
-      const ti = c.tHead % 3;
-      c.tx[ti] = c.x; c.ty[ti] = c.y; c.to[ti] = c.opacity * 0.25;
-      c.tHead++;
+      // Trail
+      const ti = c.tIdx % 3;
+      c.tx[ti] = c.x; c.ty[ti] = c.y; c.to[ti] = c.opacity;
+      c.tIdx++;
 
       // Death
       if (c.life >= c.maxLife) {
-        c.active = false;
-        activeCrows.splice(i, 1);
-        spawnFeathers(c.x, c.y, c.burst ? rInt(8,12) : rInt(4,6));
+        c.active = false; activeCrows.splice(i, 1);
+        spawnFeathers(c.x, c.y, c.burst ? rInt(7, 11) : rInt(3, 5));
         spawnSmoke(c.x, c.y);
       }
     }
@@ -278,63 +211,58 @@
     for (let i = activeFeathers.length - 1; i >= 0; i--) {
       const f = activeFeathers[i];
       f.life++; f.x += f.vx; f.y += f.vy;
-      f.vy += 0.045;  // gentle gravity
-      f.rot += f.rotSpd;
-      f.opacity = 0.9 * (1 - f.life / f.maxLife);
-      if (f.life >= f.maxLife) { f.active = false; activeFeathers.splice(i,1); }
+      f.vy += 0.05; f.rot += f.rotS;
+      f.opacity = 0.85 * (1 - f.life / f.maxLife);
+      if (f.life >= f.maxLife) { f.active = false; activeFeathers.splice(i, 1); }
     }
   }
 
   function updateSmoke() {
     for (let i = activeSmoke.length - 1; i >= 0; i--) {
-      const s = activeSmoke[i];
-      s.life++;
+      const s = activeSmoke[i]; s.life++;
       const t = s.life / s.maxLife;
-      s.r = 2 + (s.maxR - 2) * t;
-      s.opacity = 0.18 * (1 - t);
-      if (s.life >= s.maxLife) { s.active = false; activeSmoke.splice(i,1); }
+      s.r = 2 + (s.maxR - 2) * t; s.opacity = 0.18 * (1 - t);
+      if (s.life >= s.maxLife) { s.active = false; activeSmoke.splice(i, 1); }
     }
   }
 
   function updateShockwaves() {
     for (let i = shockwaves.length - 1; i >= 0; i--) {
-      const sw = shockwaves[i];
-      sw.life++;
+      const sw = shockwaves[i]; sw.life++;
       const t = sw.life / sw.maxLife;
       sw.r = 4 + (sw.maxR - 4) * t;
-      sw.opacity = 0.4 * (1 - t) * (1 - t);
-      if (sw.life >= sw.maxLife) shockwaves.splice(i,1);
+      sw.opacity = 0.45 * (1 - t) * (1 - t);
+      if (sw.life >= sw.maxLife) shockwaves.splice(i, 1);
     }
-    if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - 0.004);
+    if (flashAlpha > 0) flashAlpha -= 0.004;
   }
 
-  // ── RENDER ─────────────────────────────────────────────────────────
+  // ── RENDER ─────────────────────────────────────────────────────────────
   function render() {
     const W = window.innerWidth, H = window.innerHeight;
     ctx.clearRect(0, 0, W, H);
 
-    // Screen flash on burst
+    // Screen flash
     if (flashAlpha > 0) {
-      ctx.fillStyle = `rgba(255,220,200,${flashAlpha})`;
+      ctx.fillStyle = `rgba(255,210,190,${flashAlpha})`;
       ctx.fillRect(0, 0, W, H);
     }
 
-    // Smoke puffs
+    // Smoke
     for (const s of activeSmoke) {
       const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
-      g.addColorStop(0, `rgba(15,10,20,${s.opacity * 1.2})`);
-      g.addColorStop(1, 'rgba(15,10,20,0)');
+      g.addColorStop(0, `rgba(10,8,15,${s.opacity * 1.3})`);
+      g.addColorStop(1, 'rgba(10,8,15,0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, PI2); ctx.fill();
     }
 
-    // Shockwave rings
+    // Shockwaves
     for (const sw of shockwaves) {
       ctx.save();
-      ctx.strokeStyle = `rgba(255,60,60,${sw.opacity})`;
+      ctx.strokeStyle = `rgba(255,30,30,${sw.opacity})`;
       ctx.lineWidth = 2;
-      ctx.shadowColor = CFG.eyeColor;
-      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#FF0000'; ctx.shadowBlur = 14;
       ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.r, 0, PI2); ctx.stroke();
       ctx.restore();
     }
@@ -343,47 +271,64 @@
     for (const f of activeFeathers) {
       ctx.save();
       ctx.globalAlpha = f.opacity;
-      ctx.translate(f.x, f.y); ctx.rotate(f.rotation || f.rot);
-      ctx.fillStyle = '#1a1a1a';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, f.sz * 0.28, f.sz, 0, 0, PI2);
-      ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.translate(f.x, f.y); ctx.rotate(f.rot);
+      ctx.beginPath(); ctx.ellipse(0, 0, f.sz * 0.25, f.sz, 0, 0, PI2); ctx.fill();
       ctx.restore();
     }
 
     // Crows
-    if (!BITMAPS_READY) return;
+    if (!READY) return;
 
     for (const c of activeCrows) {
-      const bmaps = c.burst ? BITMAPS_LARGE : BITMAPS_SMALL;
-      const bmp   = bmaps[c.pose];
+      const bmp = BITMAPS[c.pose];
       if (!bmp) continue;
-      const dw = bmp.width  * c.size * 0.5;
-      const dh = bmp.height * c.size * 0.5;
+      const dw = bmp.width  * c.size;
+      const dh = bmp.height * c.size;
+      const ep = EYE_POS[c.pose];
+      // Eye position in world space (account for rotation)
+      const ex_local = ep.nx * dw - dw / 2;
+      const ey_local = ep.ny * dh - dh / 2;
+      const cosR = Math.cos(c.rot), sinR = Math.sin(c.rot);
+      const ex = c.x + ex_local * cosR - ey_local * sinR;
+      const ey = c.y + ex_local * sinR + ey_local * cosR;
 
-      // Draw 3 trail ghost echoes (fading)
+      // Trail echoes (ghost copies behind crow)
       for (let t = 0; t < 3; t++) {
-        const age = (c.tHead - t) % 3;
-        if (c.to[age] <= 0) continue;
+        const age = (c.tIdx - 1 - t + 3) % 3;
+        const toA = c.to[age] * (0.22 - t * 0.07);
+        if (toA <= 0.01) continue;
         ctx.save();
-        ctx.globalAlpha = c.to[age] * (0.3 - t * 0.08);
-        ctx.translate(c.tx[age], c.ty[age]);
-        ctx.rotate(c.rot);
+        ctx.globalAlpha = toA;
+        ctx.translate(c.tx[age], c.ty[age]); ctx.rotate(c.rot);
         ctx.drawImage(bmp, -dw/2, -dh/2, dw, dh);
         ctx.restore();
       }
 
-      // Main crow
+      // Main crow — solid black, no filter
       ctx.save();
       ctx.globalAlpha = c.opacity;
-      ctx.translate(c.x, c.y);
-      ctx.rotate(c.rot);
+      ctx.translate(c.x, c.y); ctx.rotate(c.rot);
       ctx.drawImage(bmp, -dw/2, -dh/2, dw, dh);
+      ctx.restore();
+
+      // Red glowing eye — drawn separately with shadowBlur only on the dot
+      const eyeR = c.burst ? 3.5 * c.size : 2.5 * c.size;
+      ctx.save();
+      ctx.globalAlpha = c.opacity;
+      ctx.shadowColor = '#FF0000';
+      ctx.shadowBlur = c.burst ? 18 : 10;
+      ctx.fillStyle = '#FF1A00';
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, PI2); ctx.fill();
+      // Inner bright dot
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#FFAAAA';
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR * 0.4, 0, PI2); ctx.fill();
       ctx.restore();
     }
   }
 
-  // ── MAIN RAF LOOP ──────────────────────────────────────────────────
+  // ── LOOP ─────────────────────────────────────────────────────────────
   let running = true;
   function tick() {
     if (!running) return;
@@ -393,20 +338,19 @@
   }
   requestAnimationFrame(tick);
 
-  // ── MOUSE MOVE → SPAWN CROWS ───────────────────────────────────────
-  let lastSpawnT = 0, mouseX = 0, mouseY = 0, lastMoveT = Date.now();
+  // ── MOUSE → SPAWN (High intensity: throttle 40ms, 2-3 crows) ─────────
+  let lastT = 0, lastMoveT = Date.now();
 
   window.addEventListener('mousemove', e => {
-    mouseX = e.clientX; mouseY = e.clientY;
     lastMoveT = Date.now();
     const now = performance.now();
-    if (now - lastSpawnT < INT.throttle) return;
-    lastSpawnT = now;
-    const n = rInt(INT.spawnMin, INT.spawnMax);
-    for (let i = 0; i < n; i++) spawnCrow(mouseX, mouseY, false);
-  }, { passive: true });
+    if (now - lastT < 40) return; // 40ms throttle = ~25 triggers/sec
+    lastT = now;
+    const n = Math.floor(2 + Math.random() * 2); // 2-3 per event
+    for (let i = 0; i < n; i++) spawnCrow(e.clientX, e.clientY, false);
+  }, { passive:true });
 
-  // ── TRIPLE-CLICK BURST ─────────────────────────────────────────────
+  // ── TRIPLE-CLICK BURST ────────────────────────────────────────────────
   const clicks = [];
   window.addEventListener('click', e => {
     const now = Date.now();
@@ -414,32 +358,22 @@
     while (clicks.length && clicks[0] < now - 1000) clicks.shift();
     if (clicks.length >= 3) {
       clicks.length = 0;
-      const n = rInt(INT.burstMin, INT.burstMax);
+      const n = 8 + Math.floor(Math.random() * 6); // 8-13
       for (let i = 0; i < n; i++) spawnCrow(e.clientX, e.clientY, true);
       spawnShockwave(e.clientX, e.clientY);
     }
   });
 
-  // ── IDLE AMBIENT CROWS ─────────────────────────────────────────────
+  // ── IDLE AMBIENT ──────────────────────────────────────────────────────
   let idleTmr = null;
   setInterval(() => {
-    const idle = Date.now() - lastMoveT > CFG.idleTimeout;
+    const idle = Date.now() - lastMoveT > 5000;
     if (idle && !idleTmr) {
       idleTmr = setInterval(() => {
-        const x = rand(80, window.innerWidth - 80);
-        const y = rand(80, window.innerHeight - 80);
-        spawnCrow(x, y, false);
-      }, CFG.idleSpawnInterval);
-    } else if (!idle && idleTmr) {
-      clearInterval(idleTmr); idleTmr = null;
-    }
+        spawnCrow(rand(80, window.innerWidth-80), rand(80, window.innerHeight-80), false);
+      }, 3000);
+    } else if (!idle && idleTmr) { clearInterval(idleTmr); idleTmr = null; }
   }, 800);
 
-  // ── CLEANUP API ────────────────────────────────────────────────────
-  window.__itachiCrowDestroy = () => {
-    running = false;
-    if (idleTmr) clearInterval(idleTmr);
-    canvas.remove();
-  };
-
+  window.__itachiCrowDestroy = () => { running = false; if(idleTmr) clearInterval(idleTmr); canvas.remove(); };
 })();
