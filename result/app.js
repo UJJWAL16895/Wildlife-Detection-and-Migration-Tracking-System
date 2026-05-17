@@ -15,7 +15,7 @@ const SPECIES_IMAGES = {
   'house crow': '../assets/images/cards/house-crow.png',
   'bengal tiger': '../assets/images/cards/bengal-tiger.png',
   'indian grey hornbill': '../assets/images/cards/indian-grey-hornbill.png',
-  'asian elephant': '../assets/images/cards/donkey.png',
+  'asian elephant': '../assets/images/cards/asian-elephant.png',
   'wild donkey': '../assets/images/cards/donkey.png',
   'wild horse': '../assets/images/cards/horse.png',
   'plains zebra': '../assets/images/cards/plains-zebra.png',
