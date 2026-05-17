@@ -372,13 +372,15 @@
 
   // ── EVENTS ───────────────────────────────────────────────────────────
   let lastT = 0, lastMv = Date.now();
+  let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
 
   window.addEventListener('mousemove', e => {
+    mouseX = e.clientX; mouseY = e.clientY;
     lastMv = Date.now();
     const now = performance.now();
     if (now - lastT < 40) return;
     lastT = now;
-    const n = 2 + Math.floor(Math.random() * 2); // 2–3 per event
+    const n = 2 + Math.floor(Math.random() * 2); // 2–3 per move
     for (let i = 0; i < n; i++) spawnBat(e.clientX, e.clientY, false);
   }, { passive: true });
 
@@ -395,20 +397,55 @@
     }
   });
 
-  // Idle ambient bats
-  let idleTmr = null;
+  // ── CURSOR-IDLE: constant bat swarm AT the cursor when mouse is still ──
+  // After 800ms of no movement → spawn bats at cursor every 220ms
+  // Feels like a swirling colony nesting at your pointer
+  let cursorIdleTmr  = null;
+  let cursorIdleStart = null;
+
+  function startCursorIdle() {
+    if (cursorIdleTmr) return;
+    cursorIdleStart = Date.now();
+    cursorIdleTmr = setInterval(() => {
+      // Spawn 1-2 bats at cursor, intensity ramps up over the first 2 seconds
+      const secs = (Date.now() - cursorIdleStart) / 1000;
+      const count = secs > 2 ? 2 : 1;
+      for (let i = 0; i < count; i++) spawnBat(mouseX, mouseY, false);
+    }, 220);
+  }
+
+  function stopCursorIdle() {
+    if (!cursorIdleTmr) return;
+    clearInterval(cursorIdleTmr);
+    cursorIdleTmr = null;
+    cursorIdleStart = null;
+  }
+
+  // Check every 100ms if cursor has been idle for 800ms
   setInterval(() => {
-    const idle = Date.now() - lastMv > 5000;
-    if (idle && !idleTmr) {
-      idleTmr = setInterval(() => spawnBat(
+    const idleMs = Date.now() - lastMv;
+    if (idleMs > 800) {
+      startCursorIdle();
+    } else {
+      stopCursorIdle();
+    }
+  }, 100);
+
+  // ── AMBIENT: random screen bats when no mouse activity for 8s ─────────
+  let ambientTmr = null;
+  setInterval(() => {
+    const idle = Date.now() - lastMv > 8000;
+    if (idle && !ambientTmr) {
+      ambientTmr = setInterval(() => spawnBat(
         rand(80, window.innerWidth - 80), rand(80, window.innerHeight - 80), false
-      ), 2800);
-    } else if (!idle && idleTmr) { clearInterval(idleTmr); idleTmr = null; }
-  }, 800);
+      ), 3500);
+    } else if (!idle && ambientTmr) { clearInterval(ambientTmr); ambientTmr = null; }
+  }, 1000);
 
   window.__batDestroy = () => {
     running = false;
-    if (idleTmr) clearInterval(idleTmr);
+    stopCursorIdle();
+    if (ambientTmr) clearInterval(ambientTmr);
     canvas.remove();
   };
 })();
