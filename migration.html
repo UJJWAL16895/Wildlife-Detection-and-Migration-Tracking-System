@@ -6,7 +6,7 @@
 <title>Migration Explorer — WildTrack</title>
 <meta name="description" content="Explore real animal migration routes with animated seasonal tracking on an interactive Mapbox map."/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Inter:wght@300;400;500&family=Space+Mono&display=swap" rel="stylesheet"/>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"/>
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   :root{
@@ -170,13 +170,13 @@
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 
   /* Habitat zone popup style */
-  .mapboxgl-popup-content{
+  .leaflet-popup-content-wrapper{
     background:var(--glass)!important;backdrop-filter:blur(12px);
     border:1px solid var(--border)!important;color:var(--text)!important;
-    border-radius:12px!important;padding:14px 18px!important;
+    border-radius:12px!important;padding:4px 8px!important;
     font-family:'Inter',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.5)!important;
   }
-  .mapboxgl-popup-tip{border-top-color:rgba(13,26,37,0.85)!important}
+  .leaflet-popup-tip{border-top-color:rgba(13,26,37,0.85)!important;background:var(--glass)!important;}
   .popup-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:4px}
   .popup-sub{font-size:12px;color:var(--muted)}
 
@@ -215,27 +215,9 @@
 <div id="left-panel">
   <div class="panel-section">
     <div class="eyebrow">Species</div>
-    <div class="panel-title" id="species-title">Select Animal</div>
-    <div class="species-grid" id="species-grid">
-      <button class="sp-btn active" data-species="elephant" onclick="selectSpecies('elephant')">
-        <span class="sp-icon">🐘</span><span>Asian Elephant</span>
-      </button>
-      <button class="sp-btn" data-species="tiger" onclick="selectSpecies('tiger')">
-        <span class="sp-icon">🐯</span><span>Bengal Tiger</span>
-      </button>
-      <button class="sp-btn" data-species="myna" onclick="selectSpecies('myna')">
-        <span class="sp-icon">🐦</span><span>Common Myna</span>
-      </button>
-      <button class="sp-btn" data-species="crow" onclick="selectSpecies('crow')">
-        <span class="sp-icon">🐦‍⬛</span><span>House Crow</span>
-      </button>
-      <button class="sp-btn" data-species="hornbill" onclick="selectSpecies('hornbill')">
-        <span class="sp-icon">🦜</span><span>Indian Hornbill</span>
-      </button>
-      <button class="sp-btn" data-species="zebra" onclick="selectSpecies('zebra')">
-        <span class="sp-icon">🦓</span><span>Plains Zebra</span>
-      </button>
-    </div>
+    <div class="panel-title" id="species-title">Loading...</div>
+    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:8px;">Tracking data loaded from detection.</div>
+
   </div>
 
   <div class="panel-section">
@@ -326,7 +308,7 @@
 </div>
 
 <!-- SCRIPTS -->
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="migration.js"></script>
 </body>
 </html>
