@@ -118,7 +118,7 @@ async function runDetectionAndRedirect(imageFile) {
         sessionStorage.setItem('wildtrack_filename', imageFile.name);
 
         // 5. Navigate
-        window.location.href = '/result';
+        window.location.href = 'result/index.html';
 
     } catch (error) {
         console.error('[WildTrack] Detection failed:', error);
