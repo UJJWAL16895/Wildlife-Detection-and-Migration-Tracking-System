@@ -1,11 +1,6 @@
 // app.js — WildTrack Result Page Engine
 gsap.registerPlugin(ScrollTrigger);
 
-// ─── INIT LENIS ───────────────────────────────────────────────────────────────
-const lenis = new Lenis({ duration: 1.2, easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
-lenis.on('scroll', ScrollTrigger.update);
-gsap.ticker.add(t => lenis.raf(t * 1000));
-gsap.ticker.lagSmoothing(0);
 
 // ─── STATUS COLOR MAP ─────────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -66,20 +61,21 @@ if (!raw) {
     document.getElementById('result-main').style.display = 'block';
 
     const detections = data.detections || (data.species ? [data] : []);
+    const rootImg = img64; // Use original image, we will draw our own bounding boxes
     let activeIdx = 0;
 
-    buildTabs(detections);
+    buildTabs(detections, rootImg);
 
     fetch('../data/species_encyclopedia.json')
       .then(r => r.json())
-      .then(enc => { renderDetection(detections[0], enc, img64); document.body.classList.add('ready'); })
-      .catch(() => { renderDetection(detections[0], null, img64); document.body.classList.add('ready'); });
+      .then(enc => { renderDetection(detections[0], enc, rootImg); document.body.classList.add('ready'); })
+      .catch(() => { renderDetection(detections[0], null, rootImg); document.body.classList.add('ready'); });
   }
 }
 
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
-function buildTabs(detections) {
+function buildTabs(detections, rootImg) {
   if (detections.length <= 1) return;
   const container = document.getElementById('animal-tabs');
   container.style.display = 'flex';
@@ -95,8 +91,8 @@ function buildTabs(detections) {
       btn.classList.add('active');
       fetch('../data/species_encyclopedia.json')
         .then(r => r.json())
-        .then(enc => renderDetection(detections[i], enc, img64))
-        .catch(() => renderDetection(detections[i], null, img64));
+        .then(enc => renderDetection(detections[i], enc, rootImg))
+        .catch(() => renderDetection(detections[i], null, rootImg));
     };
     container.appendChild(btn);
   });
@@ -109,9 +105,7 @@ function renderDetection(det, enc, imgSrc) {
   const sciName = si.scientific_name || det.scientific_name || '';
   const confidence = det.confidence > 1 ? det.confidence : Math.round((det.confidence || 0) * 100);
   const accentColor = det.color_hex || '#F5A623';
-  const annotatedImg = det.annotated_image_base64
-    ? `data:image/jpeg;base64,${det.annotated_image_base64}`
-    : (imgSrc || '');
+  const annotatedImg = imgSrc || '';
   const top3 = det.top3_predictions || det.top_predictions || [];
   const migData = det.migration_data || si.migration_data || {};
   const funFacts = si.fun_facts || [];
@@ -134,15 +128,56 @@ function renderDetection(det, enc, imgSrc) {
 
 // ─── SECTION 1: REVEAL ────────────────────────────────────────────────────────
 function renderReveal(name, sciName, confidence, annotatedImg, accent, status, det) {
-  // Annotated image
+  // Annotated image (now using raw image + CSS boxes)
   const img = document.getElementById('annotated-img');
   if (annotatedImg) img.src = annotatedImg;
+  
+  const resultData = JSON.parse(sessionStorage.getItem('wildtrack_result') || '{}');
+  const allDetections = resultData.detections || [];
+  const imgW = resultData.image_size?.width || 800;
+  const imgH = resultData.image_size?.height || 600;
+  
   img.onload = () => {
     document.getElementById('img-dims').textContent = `${img.naturalWidth} × ${img.naturalHeight} px`;
+    
+    // Draw custom bounding boxes
+    const wrap = document.getElementById('reveal-img-wrap');
+    // Clean up old boxes
+    wrap.querySelectorAll('.custom-bbox').forEach(el => el.remove());
+    
+    allDetections.forEach((d, idx) => {
+      if(!d.bbox) return;
+      const [x1, y1, x2, y2] = d.bbox;
+      const box = document.createElement('div');
+      box.className = 'custom-bbox';
+      box.style.left = (x1 / imgW * 100) + '%';
+      box.style.top = (y1 / imgH * 100) + '%';
+      box.style.width = ((x2 - x1) / imgW * 100) + '%';
+      box.style.height = ((y2 - y1) / imgH * 100) + '%';
+      
+      const cHex = d.color_hex || '#4ECDC4';
+      box.style.borderColor = cHex;
+      
+      const confStr = Math.round((d.confidence || 0) * 100) + '%';
+      const label = document.createElement('div');
+      label.className = 'custom-bbox-label';
+      label.style.backgroundColor = cHex;
+      
+      // If the box is too close to the top of the image, put the label inside the box
+      const topPct = (y1 / imgH * 100);
+      if (topPct < 5) {
+        label.style.top = '0';
+        label.style.borderRadius = '0 0 4px 0';
+      }
+      
+      label.innerHTML = `<span class="custom-bbox-badge">${idx + 1}</span>${d.species} ${confStr}`;
+      
+      box.appendChild(label);
+      wrap.appendChild(box);
+    });
   };
 
-  const detections = JSON.parse(sessionStorage.getItem('wildtrack_result') || '{}');
-  const count = detections.detections?.length || 1;
+  const count = allDetections.length || 1;
   document.getElementById('detect-count').textContent = `${count} animal${count !== 1 ? 's' : ''} detected`;
 
   // Species name
@@ -203,7 +238,7 @@ function animateConfRing(conf, accent) {
     strokeDashoffset: target, duration: 1.5, ease: 'power2.out',
     onUpdate: function() {
       const progress = 1 - (parseFloat(fill.style.strokeDashoffset) / circumference);
-      const current = Math.round(progress * conf);
+      const current = Math.round(progress * 100);
       numEl.textContent = current + '%';
       if (bigEl) bigEl.textContent = current + '%';
     }
