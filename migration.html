@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Migration Explorer — WildTrack</title>
+<meta name="description" content="Explore real animal migration routes with animated seasonal tracking on an interactive Mapbox map."/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Inter:wght@300;400;500&family=Space+Mono&display=swap" rel="stylesheet"/>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --gold:#F5A623;--green:#39ff14;--dark:#070d12;--panel:#0d1a25;
+    --glass:rgba(13,26,37,0.85);--border:rgba(245,166,35,0.2);
+    --muted:rgba(255,255,255,0.5);--text:#F0EDE8;
+  }
+  html,body{height:100%;background:var(--dark);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+
+  /* ── NAV ── */
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;gap:16px;
+    padding:14px 24px;background:rgba(7,13,18,0.9);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);}
+  .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--gold);
+    font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem}
+  nav h1{font-family:'Syne',sans-serif;font-size:1rem;font-weight:600;color:var(--text);flex:1}
+  .nav-back{text-decoration:none;color:var(--muted);font-size:0.85rem;transition:color 0.2s}
+  .nav-back:hover{color:var(--gold)}
+
+  /* ── MAP ── */
+  #map{position:fixed;top:56px;left:0;right:0;bottom:0;z-index:0}
+
+  /* ── LEFT PANEL ── */
+  #left-panel{
+    position:fixed;top:56px;left:0;bottom:0;width:340px;z-index:100;
+    background:var(--glass);backdrop-filter:blur(20px);
+    border-right:1px solid var(--border);overflow-y:auto;
+    display:flex;flex-direction:column;
+  }
+  #left-panel::-webkit-scrollbar{width:4px}
+  #left-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+  .panel-section{padding:20px 20px 0}
+  .panel-section+.panel-section{border-top:1px solid var(--border);padding-top:16px;margin-top:16px}
+
+  .eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+  .panel-title{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;line-height:1.2;margin-bottom:12px}
+
+  /* Species selector */
+  .species-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+  .sp-btn{
+    padding:10px 8px;border:1px solid var(--border);border-radius:10px;
+    background:rgba(255,255,255,0.04);cursor:pointer;transition:all 0.2s;
+    font-family:'Inter',sans-serif;font-size:11px;color:var(--muted);
+    text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;
+  }
+  .sp-btn .sp-icon{font-size:20px}
+  .sp-btn.active,.sp-btn:hover{border-color:var(--gold);color:var(--text);background:rgba(245,166,35,0.1)}
+  .sp-btn.active{box-shadow:0 0 12px rgba(245,166,35,0.2)}
+
+  /* Season slider */
+  .season-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .month-display{font-family:'Space Mono',monospace;font-size:1rem;color:var(--gold);font-weight:700}
+  input[type=range]{width:100%;accent-color:var(--gold);height:4px;margin-bottom:6px;cursor:pointer}
+  .months-row{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
+
+  /* Season badge */
+  .season-badge{
+    display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;
+    letter-spacing:1px;text-transform:uppercase;border:1px solid;margin-bottom:12px;
+  }
+
+  /* Info cards */
+  .info-card{
+    background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;
+    padding:12px;margin-bottom:8px;
+  }
+  .info-card-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .info-card-val{font-size:0.95rem;font-weight:500}
+
+  /* Location chip */
+  .loc-chip{
+    display:flex;align-items:center;gap:8px;padding:10px 14px;
+    background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.3);
+    border-radius:10px;margin-bottom:12px;
+  }
+  .loc-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);flex-shrink:0;
+    box-shadow:0 0 8px var(--gold);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:0.6}}
+  .loc-text{font-size:0.9rem;font-weight:500}
+  .loc-month{font-size:0.75rem;color:var(--muted)}
+
+  /* Habitat chips */
+  .hab-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .hab-chip{
+    padding:4px 10px;background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.2);
+    border-radius:20px;font-size:11px;color:#39ff14;
+  }
+
+  /* Play controls */
+  .play-controls{display:flex;gap:8px;align-items:center;margin-top:4px;padding:16px 20px;
+    border-top:1px solid var(--border);}
+  .play-btn{
+    flex:1;padding:10px;border:1px solid var(--gold);border-radius:10px;
+    background:rgba(245,166,35,0.1);color:var(--gold);cursor:pointer;
+    font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:600;transition:all 0.2s;
+  }
+  .play-btn:hover{background:rgba(245,166,35,0.2)}
+  .play-btn.active{background:var(--gold);color:#000}
+  .speed-btn{
+    padding:10px 14px;border:1px solid var(--border);border-radius:10px;
+    background:rgba(255,255,255,0.04);color:var(--muted);cursor:pointer;font-size:12px;
+    font-family:'Space Mono',monospace;transition:all 0.2s;
+  }
+  .speed-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+  /* ── RIGHT PANEL — 3D Model ── */
+  #right-panel{
+    position:fixed;top:56px;right:0;bottom:0;width:320px;z-index:100;
+    background:var(--glass);backdrop-filter:blur(20px);
+    border-left:1px solid var(--border);
+    display:flex;flex-direction:column;
+  }
+  .model-header{padding:16px 20px;border-bottom:1px solid var(--border)}
+  .model-wrap{flex:1;position:relative;overflow:hidden}
+  .model-iframe{width:100%;height:100%;border:none;display:block}
+  .model-loading{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--panel);gap:12px;
+  }
+  .model-loading-spinner{width:40px;height:40px;border:2px solid var(--border);
+    border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .model-info{padding:14px 20px;border-top:1px solid var(--border);flex-shrink:0}
+  .model-name{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:2px}
+  .model-sci{font-size:12px;color:var(--muted);font-style:italic}
+
+  /* ── MAP OVERLAYS ── */
+  .map-legend{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--glass);backdrop-filter:blur(16px);
+    border:1px solid var(--border);border-radius:12px;padding:10px 20px;
+    display:flex;align-items:center;gap:20px;z-index:200;font-size:12px;
+  }
+  .legend-item{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .legend-line{width:24px;height:2px;border-radius:1px;flex-shrink:0}
+
+  /* Season indicator overlay on map */
+  #season-overlay{
+    position:fixed;top:70px;left:50%;transform:translateX(-50%);
+    background:var(--glass);backdrop-filter:blur(12px);
+    border:1px solid var(--border);border-radius:30px;padding:8px 20px;z-index:200;
+    font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;
+    display:flex;align-items:center;gap:10px;
+  }
+
+  /* Animal marker on map */
+  .animal-marker{
+    width:40px;height:40px;border-radius:50%;
+    border:3px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;
+    background:rgba(7,13,18,0.9);
+    box-shadow:0 0 20px rgba(245,166,35,0.6);
+    cursor:pointer;
+    animation:float 3s ease-in-out infinite;
+    transition:all 0.3s;
+  }
+  .animal-marker:hover{transform:scale(1.2)!important}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+  /* Habitat zone popup style */
+  .mapboxgl-popup-content{
+    background:var(--glass)!important;backdrop-filter:blur(12px);
+    border:1px solid var(--border)!important;color:var(--text)!important;
+    border-radius:12px!important;padding:14px 18px!important;
+    font-family:'Inter',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.5)!important;
+  }
+  .mapboxgl-popup-tip{border-top-color:rgba(13,26,37,0.85)!important}
+  .popup-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:4px}
+  .popup-sub{font-size:12px;color:var(--muted)}
+
+  /* Responsive */
+  @media(max-width:900px){
+    #left-panel{width:280px}
+    #right-panel{display:none}
+  }
+  @media(max-width:700px){
+    #left-panel{width:100%;bottom:auto;height:auto;max-height:50vh;top:56px}
+    #map{top:calc(56px + 50vh)}
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="/">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M6 12a6 6 0 0 0 6-6"/><path d="M18 12a6 6 0 0 1-6 6"/><circle cx="6" cy="6" r="1.5" fill="#F5A623"/><circle cx="18" cy="6" r="1.5" fill="#F5A623"/><circle cx="6" cy="18" r="1.5" fill="#F5A623"/><circle cx="18" cy="18" r="1.5" fill="#F5A623"/></svg>
+    WildTrack
+  </a>
+  <h1>🌍 Migration Explorer</h1>
+  <a class="nav-back" href="javascript:history.back()">← Back</a>
+</nav>
+
+<!-- SEASON OVERLAY -->
+<div id="season-overlay">
+  <span id="season-emoji">❄️</span>
+  <span id="season-name">Winter</span>
+  &nbsp;·&nbsp;
+  <span id="overlay-month" style="color:var(--gold)">January</span>
+</div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel">
+  <div class="panel-section">
+    <div class="eyebrow">Species</div>
+    <div class="panel-title" id="species-title">Select Animal</div>
+    <div class="species-grid" id="species-grid">
+      <button class="sp-btn active" data-species="elephant" onclick="selectSpecies('elephant')">
+        <span class="sp-icon">🐘</span><span>Asian Elephant</span>
+      </button>
+      <button class="sp-btn" data-species="tiger" onclick="selectSpecies('tiger')">
+        <span class="sp-icon">🐯</span><span>Bengal Tiger</span>
+      </button>
+      <button class="sp-btn" data-species="myna" onclick="selectSpecies('myna')">
+        <span class="sp-icon">🐦</span><span>Common Myna</span>
+      </button>
+      <button class="sp-btn" data-species="crow" onclick="selectSpecies('crow')">
+        <span class="sp-icon">🐦‍⬛</span><span>House Crow</span>
+      </button>
+      <button class="sp-btn" data-species="hornbill" onclick="selectSpecies('hornbill')">
+        <span class="sp-icon">🦜</span><span>Indian Hornbill</span>
+      </button>
+      <button class="sp-btn" data-species="zebra" onclick="selectSpecies('zebra')">
+        <span class="sp-icon">🦓</span><span>Plains Zebra</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="eyebrow">Season Timeline</div>
+    <div class="season-label">
+      <span id="season-badge" class="season-badge">Winter</span>
+      <span class="month-display" id="month-display">Jan</span>
+    </div>
+    <input type="range" id="month-slider" min="0" max="11" value="0" oninput="onSliderChange(this.value)"/>
+    <div class="months-row">
+      <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="eyebrow">Current Position</div>
+    <div class="loc-chip">
+      <div class="loc-dot"></div>
+      <div>
+        <div class="loc-text" id="loc-text">—</div>
+        <div class="loc-month" id="loc-month">—</div>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">Migration Type</div>
+      <div class="info-card-val" id="mig-type">—</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">Annual Distance</div>
+      <div class="info-card-val" id="mig-dist">—</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">Conservation Status</div>
+      <div class="info-card-val" id="mig-status">—</div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="eyebrow">Key Habitats</div>
+    <div class="hab-chips" id="hab-chips"></div>
+  </div>
+
+  <div class="panel-section" style="padding-bottom:0">
+    <div class="eyebrow">About Migration</div>
+    <p style="font-size:0.85rem;color:var(--muted);line-height:1.6" id="mig-desc">—</p>
+  </div>
+
+  <div class="play-controls">
+    <button class="play-btn" id="play-btn" onclick="togglePlay()">▶ Animate</button>
+    <button class="speed-btn" id="speed-btn" onclick="cycleSpeed()">1×</button>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- RIGHT PANEL — 3D MODEL -->
+<div id="right-panel">
+  <div class="model-header">
+    <div class="eyebrow">3D Model</div>
+    <div class="model-name" id="model-name">Asian Elephant</div>
+    <div class="model-sci" id="model-sci">Elephas maximus</div>
+  </div>
+  <div class="model-wrap">
+    <div class="model-loading" id="model-loading">
+      <div class="model-loading-spinner"></div>
+      <div style="font-size:12px;color:var(--muted)">Loading 3D model…</div>
+    </div>
+    <iframe id="model-iframe" class="model-iframe"
+      allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true"
+      allow="autoplay; fullscreen; xr-spatial-tracking"
+      src="" title="3D Animal Model"
+      onload="document.getElementById('model-loading').style.display='none'">
+    </iframe>
+  </div>
+  <div class="model-info">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px" id="model-caption">Animated 3D model via Sketchfab</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap" id="model-tags"></div>
+  </div>
+</div>
+
+<!-- MAP LEGEND -->
+<div class="map-legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#F5A623"></div>Current Position</div>
+  <div class="legend-item"><div class="legend-line" style="background:rgba(245,166,35,0.6)"></div>Migration Path</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#39ff14"></div>Key Habitats</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>Breeding Ground</div>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="migration.js"></script>
+</body>
+</html>
