@@ -36,7 +36,6 @@ const img64  = sessionStorage.getItem('wildtrack_image');
 if (!raw) {
   // No data at all — user landed here directly
   document.getElementById('empty-state').classList.add('show');
-  document.body.classList.add('ready');
 } else {
   const data = JSON.parse(raw);
 
@@ -54,7 +53,6 @@ if (!raw) {
         <a class="btn-primary" href="/" style="text-decoration:none;display:inline-block">Try Another Image</a>
       </div>`;
     emptyEl.classList.add('show');
-    document.body.classList.add('ready');
 
   // ── Successful payload with detections ────────────────────────────────────
   } else {
@@ -68,8 +66,8 @@ if (!raw) {
 
     fetch('../data/species_encyclopedia.json')
       .then(r => r.json())
-      .then(enc => { renderDetection(detections[0], enc, rootImg); document.body.classList.add('ready'); })
-      .catch(() => { renderDetection(detections[0], null, rootImg); document.body.classList.add('ready'); });
+      .then(enc => { renderDetection(detections[0], enc, rootImg); })
+      .catch(() => { renderDetection(detections[0], null, rootImg); });
   }
 }
 

@@ -6,15 +6,6 @@
   padding: 0
 }
 
-body {
-  opacity: 0;
-  transition: opacity 0.3s
-}
-
-body.ready {
-  opacity: 1
-}
-
 :root {
   --bg: #030810;
   --bg2: #050A14;
@@ -982,6 +973,7 @@ footer {
 }
 
 /* EMPTY STATE */
+<<<<<<< HEAD
 #empty-state {
   display: none;
   min-height: 100vh;
@@ -1007,6 +999,10 @@ footer {
 #empty-state p {
   color: var(--text2);
   margin-bottom: 24px
+=======
+#empty-state{display:none;min-height:100vh;align-items:center;justify-content:center;
+  flex-direction:column;text-align:center;padding:40px;
+>>>>>>> d565d0f (Fix UI glitches on result page)
 }
 
 /* RESPONSIVE */
